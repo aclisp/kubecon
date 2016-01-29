@@ -19,7 +19,7 @@
         <tr>
             <td>{{.Name}}</td>
             <td>{{.Image}}</td>
-            <td>{{.Status}}</td>
+            <td>{{.Status}} ({{.Ready}}) {{.Restarts}}</td>
             <td>{{.Age}}</td>
             <td class="{{if .HostNetwork}}warning{{else}}info{{end}}">
                 {{if .HostNetwork}}HOST{{else}}NAT{{end}}
