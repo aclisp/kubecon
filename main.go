@@ -36,7 +36,7 @@ func main() {
 	var err error
 	kubeClient, err = getKubeClient()
 	if err != nil {
-		glog.Fatal("Can not connect to kubernetes: %v", err)
+		glog.Fatalf("Can not connect to kubernetes: %v", err)
 	}
 
 	r := gin.Default()
@@ -60,7 +60,7 @@ func listPodsInNamespace(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "podList", gin.H{
 		"title": "Show Pods",
-		"pods": genPods(list),
+		"pods":  genPods(list),
 	})
 }
 
@@ -95,16 +95,16 @@ func getKubeClient() (*kube_client.Client, error) {
 }
 
 type Pod struct {
-	Name string
-	Image string
-	Ready string
-	Status string
-	Restarts int
-	Age string
+	Name        string
+	Image       string
+	Ready       string
+	Status      string
+	Restarts    int
+	Age         string
 	HostNetwork bool
-	HostIP string
-	PodIP string
-	Ports string
+	HostIP      string
+	PodIP       string
+	Ports       string
 }
 
 func genPods(list *api.PodList) (pods []Pod) {
@@ -160,16 +160,16 @@ func genOnePod(pod *api.Pod) Pod {
 	}
 
 	return Pod{
-		Name: pod.Name,
-		Image: pod.Spec.Containers[0].Image,
-		Ready: fmt.Sprintf("%d/%d", readyContainers, totalContainers),
-		Status: reason,
-		Restarts: restarts,
-		Age: translateTimestamp(pod.CreationTimestamp),
+		Name:        pod.Name,
+		Image:       pod.Spec.Containers[0].Image,
+		Ready:       fmt.Sprintf("%d/%d", readyContainers, totalContainers),
+		Status:      reason,
+		Restarts:    restarts,
+		Age:         translateTimestamp(pod.CreationTimestamp),
 		HostNetwork: pod.Spec.HostNetwork,
-		HostIP: pod.Spec.NodeName,
-		PodIP: podIP,
-		Ports: ports,
+		HostIP:      pod.Spec.NodeName,
+		PodIP:       podIP,
+		Ports:       ports,
 	}
 }
 
