@@ -19,15 +19,29 @@
         <tr>
             <td>{{.Name}}</td>
             <td>{{.Image}}</td>
-            <td class="{{if eq .ReadyContainers .TotalContainers}}success{{else}}danger{{end}}">
-                {{.Status}} ({{printf "%d/%d" .ReadyContainers .TotalContainers}}) {{.Restarts}}
+            <td>
+                {{if eq .Status "Running"}}
+                    <span class="label label-success">{{.Status}}</span>
+                {{else}}
+                    <span class="label label-danger">{{.Status}}</span>
+                {{end}}
+                {{if eq .ReadyContainers .TotalContainers}}
+                    <span class="label label-success">{{printf "%d/%d" .ReadyContainers .TotalContainers}}</span>
+                {{else}}
+                    <span class="label label-danger">{{printf "%d/%d" .ReadyContainers .TotalContainers}}</span>
+                {{end}}
+                <span class="label label-default">{{.Restarts}}</span>
             </td>
             <td>{{.Age}}</td>
-            <td class="{{if .HostNetwork}}warning{{else}}info{{end}}">
-                {{if .HostNetwork}}HOST{{else}}NAT{{end}}
+            <td>
+                {{if .HostNetwork}}
+                    <span class="label label-warning">HOST</span>
+                {{else}}
+                    <span class="label label-info">NAT</span>
+                {{end}}
             </td>
             <td>{{.HostIP}}</td>
-            <td>{{.PodIP}}</td>
+            <td><span class="label label-default">{{.PodIP}}</span></td>
             <td>{{.Ports}}</td>
         </tr>
         {{end}}

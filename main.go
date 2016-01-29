@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -24,7 +25,8 @@ const (
 )
 
 var (
-	kubeClient *kube_client.Client
+	kubeClient  *kube_client.Client
+	portMapping *regexp.Regexp
 )
 
 func main() {
@@ -38,6 +40,7 @@ func main() {
 	if err != nil {
 		glog.Fatalf("Can not connect to kubernetes: %v", err)
 	}
+	portMapping = regexp.MustCompile(`PortMapping\((.*)\)`)
 
 	r := gin.Default()
 	r.Static("/js", "js")
@@ -157,7 +160,7 @@ func genOnePod(pod *api.Pod) Pod {
 		ports = strings.TrimSuffix(ports, ",")
 	} else {
 		podIP = pod.Status.PodIP
-		ports = pod.Status.Message
+		ports = portMapping.FindStringSubmatch(pod.Status.Message)[1]
 	}
 
 	return Pod{
