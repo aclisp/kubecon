@@ -95,16 +95,17 @@ func getKubeClient() (*kube_client.Client, error) {
 }
 
 type Pod struct {
-	Name        string
-	Image       string
-	Ready       string
-	Status      string
-	Restarts    int
-	Age         string
-	HostNetwork bool
-	HostIP      string
-	PodIP       string
-	Ports       string
+	Name            string
+	Image           string
+	TotalContainers int
+	ReadyContainers int
+	Status          string
+	Restarts        int
+	Age             string
+	HostNetwork     bool
+	HostIP          string
+	PodIP           string
+	Ports           string
 }
 
 func genPods(list *api.PodList) (pods []Pod) {
@@ -160,16 +161,17 @@ func genOnePod(pod *api.Pod) Pod {
 	}
 
 	return Pod{
-		Name:        pod.Name,
-		Image:       pod.Spec.Containers[0].Image,
-		Ready:       fmt.Sprintf("%d/%d", readyContainers, totalContainers),
-		Status:      reason,
-		Restarts:    restarts,
-		Age:         translateTimestamp(pod.CreationTimestamp),
-		HostNetwork: pod.Spec.HostNetwork,
-		HostIP:      pod.Spec.NodeName,
-		PodIP:       podIP,
-		Ports:       ports,
+		Name:            pod.Name,
+		Image:           pod.Spec.Containers[0].Image,
+		TotalContainers: totalContainers,
+		ReadyContainers: readyContainers,
+		Status:          reason,
+		Restarts:        restarts,
+		Age:             translateTimestamp(pod.CreationTimestamp),
+		HostNetwork:     pod.Spec.HostNetwork,
+		HostIP:          pod.Spec.NodeName,
+		PodIP:           podIP,
+		Ports:           ports,
 	}
 }
 
