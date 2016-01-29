@@ -1,0 +1,8 @@
+{{define "error"}}
+{{template "header" .}}
+
+<h1>Remote Server Error</h1>
+<div class="alert alert-danger" role="alert">{{.error}}</div>
+
+{{template "footer" .}}
+{{end}}

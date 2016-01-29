@@ -1,0 +1,36 @@
+{{define "podList"}}
+{{template "header" .}}
+
+<table class="table table-condensed">
+    <thead>
+        <tr>
+            <th>实例名</th>
+            <th>镜像</th>
+            <th>状态</th>
+            <th>存活</th>
+            <th>网络模式</th>
+            <th>外网</th>
+            <th>内网</th>
+            <th>端口</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .pods}}
+        <tr>
+            <td>{{.Name}}</td>
+            <td>{{.Image}}</td>
+            <td>{{.Status}}</td>
+            <td>{{.Age}}</td>
+            <td class="{{if .HostNetwork}}warning{{else}}info{{end}}">
+                {{if .HostNetwork}}HOST{{else}}NAT{{end}}
+            </td>
+            <td>{{.HostIP}}</td>
+            <td>{{.PodIP}}</td>
+            <td>{{.Ports}}</td>
+        </tr>
+        {{end}}
+    </tbody>
+</table>
+
+{{template "footer" .}}
+{{end}}
