@@ -18,7 +18,12 @@
         {{range .pods}}
         <tr>
             <td>{{.Name}}</td>
-            <td>{{.Image}}</td>
+            <td>
+                {{.Image}}
+                {{if .PrivateRepo }}
+                    <span class="label label-default">p</span>
+                {{end}}
+            </td>
             <td>
                 {{if eq .Status "Running"}}
                     <span class="label label-success">{{.Status}}</span>

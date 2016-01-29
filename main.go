@@ -21,7 +21,8 @@ import (
 )
 
 const (
-	APIVersion = "v1"
+	APIVersion        = "v1"
+	PrivateRepoPrefix = "61.160.36.122:8080/"
 )
 
 var (
@@ -100,6 +101,7 @@ func getKubeClient() (*kube_client.Client, error) {
 type Pod struct {
 	Name            string
 	Image           string
+	PrivateRepo     bool
 	TotalContainers int
 	ReadyContainers int
 	Status          string
@@ -162,10 +164,17 @@ func genOnePod(pod *api.Pod) Pod {
 		podIP = pod.Status.PodIP
 		ports = portMapping.FindStringSubmatch(pod.Status.Message)[1]
 	}
+	image := pod.Spec.Containers[0].Image
+	privateRepo := false
+	if strings.HasPrefix(image, PrivateRepoPrefix) {
+		image = strings.TrimPrefix(image, PrivateRepoPrefix)
+		privateRepo = true
+	}
 
 	return Pod{
 		Name:            pod.Name,
-		Image:           pod.Spec.Containers[0].Image,
+		Image:           image,
+		PrivateRepo:     privateRepo,
 		TotalContainers: totalContainers,
 		ReadyContainers: readyContainers,
 		Status:          reason,
