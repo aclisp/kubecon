@@ -1,0 +1,96 @@
+{{define "nsInfo"}}
+{{template "header" .}}
+
+<div class="main">
+    <h1 class="page-header">{{.title}}</h1>
+
+<table class="table table-condensed table-striped">
+    <caption>Controller</caption>
+    <thead>
+    <tr>
+        <th>实例名</th>
+        <th>设定副本数</th>
+        <th>当前副本数</th>
+        <th>存活</th>
+        <th>选取规则</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{range .rcs}}
+    <tr>
+        <td>
+            <a href="/namespaces/{{$.ns}}/pods?labelSelector={{.SelectorString|urlquery}}">
+            {{.Name}}
+            </a>
+        </td>
+        <td>{{.DesiredReplicas}}</td>
+        <td>{{.CurrentReplicas}}</td>
+        <td>{{.Age}}</td>
+        <td>{{range $k, $v := .Selector}}
+            <span class="label label-default">{{printf "%s=%s" $k $v}}</span>{{end}}
+        </td>
+    </tr>
+    {{end}}
+    </tbody>
+</table>
+
+<table class="table table-condensed table-striped">
+    <caption>LB Frontend</caption>
+    <thead>
+    <tr>
+        <th>实例名</th>
+        <th>内网IP</th>
+        <th>外网IP</th>
+        <th>端口</th>
+        <th>存活</th>
+        <th>选取规则</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{range .svcs}}
+    <tr>
+        <td>{{if .SelectorString}}
+            <a href="/namespaces/{{$.ns}}/pods?labelSelector={{.SelectorString|urlquery}}">
+            {{.Name}}
+            </a>
+            {{else}}
+            {{.Name}}
+            {{end}}
+        </td>
+        <td>{{.InternalIP}}</td>
+        <td>{{.ExternalIP}}</td>
+        <td>{{range .Ports}}
+            <span class="label label-primary">{{.}}</span>{{end}}
+        </td>
+        <td>{{.Age}}</td>
+        <td>{{range $k, $v := .Selector}}
+            <span class="label label-default">{{printf "%s=%s" $k $v}}</span>{{end}}
+        </td>
+    </tr>
+    {{end}}
+    </tbody>
+</table>
+
+<table class="table table-condensed table-striped">
+    <caption>LB Backend</caption>
+    <thead>
+    <tr>
+        <th>实例名</th>
+        <th>存活</th>
+        <th>目标地址</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{range .eps}}
+    <tr>
+        <td>{{.Name}}</td>
+        <td>{{.Age}}</td>
+        <td>{{.Endpoints}}</td>
+    </tr>
+    {{end}}
+    </tbody>
+</table>
+</div>
+
+{{template "footer" .}}
+{{end}}

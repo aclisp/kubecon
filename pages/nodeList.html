@@ -1,0 +1,57 @@
+{{define "nodeList"}}
+{{template "header" .}}
+
+<div class="main">
+    <h1 class="page-header">{{.title}}</h1>
+
+<table class="table table-condensed table-striped">
+    <thead>
+    <tr>
+        <th>主机</th>
+        <th>状态</th>
+        <th>存活</th>
+        <th>标签</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{range .nodes}}
+    <tr>
+        <td>{{.Name}}</td>
+        <td>
+            {{range .Status}}
+                {{if eq . "Ready"}}
+                    <span class="label label-success">{{.}}</span>
+                {{else}}
+                    <span class="label label-danger">{{.}}</span>
+                {{end}}
+            {{end}}
+        </td>
+        <td>{{.Age}}</td>
+        <td>
+            {{range $k, $v := .Labels}}
+                {{if eq $v "true"}}
+                    {{if eq $k "kvm"}}
+                        <span class="label label-warning">{{$k}}</span>
+                    {{else}}{{if eq $k "master"}}
+                        <span class="label label-primary">{{$k}}</span>
+                    {{else}}
+                        <span class="label label-default">{{$k}}</span>
+                    {{end}}{{end}}
+                {{else}}
+                    {{if eq $k "region"}}
+                        <span class="label label-info">{{printf "%s=%s" $k $v}}</span>
+                    {{else}}
+                        <span class="label label-default">{{printf "%s=%s" $k $v}}</span>
+                    {{end}}
+                {{end}}
+            {{end}}
+        </td>
+    </tr>
+    {{end}}
+    </tbody>
+</table>
+
+</div>
+
+{{template "footer" .}}
+{{end}}

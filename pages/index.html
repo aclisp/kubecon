@@ -1,0 +1,39 @@
+{{define "index"}}
+{{template "header" .}}
+
+<div class="main">
+    <h1 class="page-header">Sigma</h1>
+    <div class="container-fluid">
+        <div class="row">
+            {{range .summary.Namespaces}}
+            <div class="col-md-3">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <a href="/namespaces/{{.Name}}">
+                            {{.Name}}
+                        </a>
+                    </div>
+                    <div class="panel-body">
+                        <a href="/namespaces/{{.Name}}/pods">
+                            有 {{.PodCount}} 个容器
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {{end}}
+        </div>
+    </div>
+    <h2 class="sub-header">Nodes</h2>
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-3">
+                <a href="/nodes">
+                    共 {{.summary.NodeCount}} 个节点
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{template "footer" .}}
+{{end}}
