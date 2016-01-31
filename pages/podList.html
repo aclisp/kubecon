@@ -54,7 +54,9 @@
                     <span class="label label-primary">NAT</span>
                 {{end}}
             </td>
-            <td>{{.HostIP}}</td>
+            <td>
+                <a href="/nodes/{{.HostIP}}">{{.HostIP}}</a>
+            </td>
             <td><span class="label label-default">{{.PodIP}}</span></td>
             <td>{{if .HostNetwork}}
                 {{range .Ports}} <span class="label label-warning">{{.}}</span> {{end}}
@@ -66,6 +68,7 @@
         {{end}}
     </tbody>
 </table>
+
 </div>
 
 {{template "footer" .}}

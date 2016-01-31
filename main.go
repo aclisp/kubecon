@@ -52,11 +52,181 @@ func main() {
 	r.LoadHTMLGlob("pages/*")
 
 	r.GET("/", index)
+	r.GET("/namespaces/:ns", listOthersInNamespace)
 	r.GET("/namespaces/:ns/pods", listPodsInNamespace)
 	r.GET("/nodes", listNodes)
-	r.GET("/namespaces/:ns", listOthersInNamespace)
+	r.GET("/nodes/:no", describeNode)
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
+}
+
+type NodeDetail struct {
+	Name                       string
+	Labels                     map[string]string
+	CreationTimestamp          string
+	Conditions                 []api.NodeCondition
+	Capacity                   map[string]string
+	SystemInfo                 api.NodeSystemInfo
+	Pods                       []*api.Pod
+	TerminatedPods             []*api.Pod
+	NonTerminatedPods          []*api.Pod
+	TerminatedPodsResources    []Resources
+	NonTerminatedPodsResources []Resources
+	AllocatedResources         Resources
+}
+
+type Resources struct {
+	Namespace             string
+	Name                  string
+	CpuRequest            string
+	CpuLimit              string
+	MemoryRequest         string
+	MemoryLimit           string
+	FractionCpuRequest    int64
+	FractionCpuLimit      int64
+	FractionMemoryRequest int64
+	FractionMemoryLimit   int64
+}
+
+func getAllPods() ([]*api.Pod, error) {
+	namespaces, err := kubeClient.Namespaces().List(labels.Everything(), fields.Everything())
+	if err != nil {
+		return nil, err
+	}
+	var result []*api.Pod
+	for i := range namespaces.Items {
+		namespace := namespaces.Items[i].Name
+		podList, err := kubeClient.Pods(namespace).List(labels.Everything(), fields.Everything())
+		if err != nil {
+			glog.Errorf("Can not get pods in namespace '%s': %v", namespace, err)
+			continue
+		}
+		for j := range podList.Items {
+			pod := &podList.Items[j]
+			result = append(result, pod)
+		}
+	}
+	return result, nil
+}
+
+func describeNode(c *gin.Context) {
+	nodename := c.Param("no")
+	node, err := kubeClient.Nodes().Get(nodename)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	d := NodeDetail{
+		Name:              nodename,
+		Labels:            node.Labels,
+		CreationTimestamp: node.CreationTimestamp.Time.Format(time.RFC1123Z),
+		Conditions:        node.Status.Conditions,
+		Capacity:          translateResourseList(node.Status.Capacity),
+		SystemInfo:        node.Status.NodeInfo,
+	}
+	allPods, err := getAllPods()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	d.Pods = filterNodePods(allPods, nodename)
+	d.TerminatedPods, d.NonTerminatedPods = filterTerminatedPods(d.Pods)
+	d.NonTerminatedPodsResources = computePodsResources(d.NonTerminatedPods, node)
+	d.TerminatedPodsResources = computePodsResources(d.TerminatedPods, node)
+	d.AllocatedResources, err = computeNodeResources(d.NonTerminatedPods, node)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	var pods []Pod
+	for _, pod := range d.Pods {
+		pods = append(pods, genOnePod(pod))
+	}
+
+	c.HTML(http.StatusOK, "nodeDetail", gin.H{
+		"title":  "Node",
+		"detail": d,
+		"pods":   pods,
+	})
+}
+
+func computeNodeResources(nonTerminated []*api.Pod, node *api.Node) (Resources, error) {
+	reqs, limits, err := getPodsTotalRequestsAndLimits(nonTerminated)
+	if err != nil {
+		return Resources{}, err
+	}
+	cpuReqs, cpuLimits, memoryReqs, memoryLimits := reqs[api.ResourceCPU], limits[api.ResourceCPU], reqs[api.ResourceMemory], limits[api.ResourceMemory]
+	fractionCpuReqs := float64(cpuReqs.MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue()) * 100
+	fractionCpuLimits := float64(cpuLimits.MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue()) * 100
+	fractionMemoryReqs := float64(memoryReqs.MilliValue()) / float64(node.Status.Capacity.Memory().MilliValue()) * 100
+	fractionMemoryLimits := float64(memoryLimits.MilliValue()) / float64(node.Status.Capacity.Memory().MilliValue()) * 100
+	return Resources{
+		CpuRequest:            cpuReqs.String(),
+		CpuLimit:              cpuLimits.String(),
+		MemoryRequest:         memoryReqs.String(),
+		MemoryLimit:           memoryLimits.String(),
+		FractionCpuRequest:    int64(fractionCpuReqs),
+		FractionCpuLimit:      int64(fractionCpuLimits),
+		FractionMemoryRequest: int64(fractionMemoryReqs),
+		FractionMemoryLimit:   int64(fractionMemoryLimits),
+	}, nil
+}
+
+func computePodsResources(pods []*api.Pod, node *api.Node) (result []Resources) {
+	for _, pod := range pods {
+		m, err := computePodResources(pod, node)
+		if err != nil {
+			glog.Errorf("Ignore pod '%s/%s' resources: %v", pod.Namespace, pod.Name, err)
+		}
+		result = append(result, m)
+	}
+	return
+}
+
+func computePodResources(pod *api.Pod, node *api.Node) (Resources, error) {
+	req, limit, err := getSinglePodTotalRequestsAndLimits(pod)
+	if err != nil {
+		return Resources{}, err
+	}
+	cpuReq, cpuLimit, memoryReq, memoryLimit := req[api.ResourceCPU], limit[api.ResourceCPU], req[api.ResourceMemory], limit[api.ResourceMemory]
+	fractionCpuReq := float64(cpuReq.MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue()) * 100
+	fractionCpuLimit := float64(cpuLimit.MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue()) * 100
+	fractionMemoryReq := float64(memoryReq.MilliValue()) / float64(node.Status.Capacity.Memory().MilliValue()) * 100
+	fractionMemoryLimit := float64(memoryLimit.MilliValue()) / float64(node.Status.Capacity.Memory().MilliValue()) * 100
+	return Resources{
+		Namespace:             pod.Namespace,
+		Name:                  pod.Name,
+		CpuRequest:            cpuReq.String(),
+		CpuLimit:              cpuLimit.String(),
+		MemoryRequest:         memoryReq.String(),
+		MemoryLimit:           memoryLimit.String(),
+		FractionCpuRequest:    int64(fractionCpuReq),
+		FractionCpuLimit:      int64(fractionCpuLimit),
+		FractionMemoryRequest: int64(fractionMemoryReq),
+		FractionMemoryLimit:   int64(fractionMemoryLimit),
+	}, nil
+}
+
+func filterNodePods(pods []*api.Pod, nodename string) (result []*api.Pod) {
+	for _, pod := range pods {
+		if pod.Spec.NodeName != nodename {
+			continue
+		}
+		result = append(result, pod)
+	}
+	return
+}
+
+func filterTerminatedPods(pods []*api.Pod) (terminated []*api.Pod, nonTerminated []*api.Pod) {
+	for _, pod := range pods {
+		if pod.Status.Phase == api.PodSucceeded || pod.Status.Phase == api.PodFailed {
+			terminated = append(terminated, pod)
+		} else {
+			nonTerminated = append(nonTerminated, pod)
+		}
+	}
+	return
 }
 
 func index(c *gin.Context) {
@@ -67,13 +237,14 @@ func index(c *gin.Context) {
 	}
 	summary := Summary{}
 	for i := range namespaces.Items {
-		name := namespaces.Items[i].Name
-		podList, err := kubeClient.Pods(name).List(labels.Everything(), fields.Everything())
+		namespace := namespaces.Items[i].Name
+		podList, err := kubeClient.Pods(namespace).List(labels.Everything(), fields.Everything())
 		if err != nil {
+			glog.Errorf("Can not get pods in namespace '%s': %v", namespace, err)
 			continue
 		}
 		summary.Namespaces = append(summary.Namespaces, Namespace{
-			Name:     name,
+			Name:     namespace,
 			PodCount: len(podList.Items),
 		})
 	}
@@ -204,11 +375,16 @@ type Pod struct {
 }
 
 type Node struct {
-	Name     string
-	Status   []string
-	Age      string
-	Labels   map[string]string
-	Capacity map[string]string
+	Name               string
+	Status             []string
+	Age                string
+	Labels             map[string]string
+	Capacity           map[string]string
+	Pods               []*api.Pod
+	TerminatedPods     []*api.Pod
+	NonTerminatedPods  []*api.Pod
+	AllocatedResources Resources
+	FractionPods       int64
 }
 
 type Namespace struct {
@@ -247,8 +423,9 @@ type Endpoint struct {
 }
 
 func genNodes(list *api.NodeList) (nodes []Node) {
+	allPods, _ := getAllPods()
 	for i := range list.Items {
-		nodes = append(nodes, genOneNode(&list.Items[i]))
+		nodes = append(nodes, genOneNode(&list.Items[i], allPods))
 	}
 	return
 }
@@ -361,6 +538,31 @@ func genOnePod(pod *api.Pod) Pod {
 	}
 }
 
+func getPodsTotalRequestsAndLimits(pods []*api.Pod) (reqs map[api.ResourceName]resource.Quantity, limits map[api.ResourceName]resource.Quantity, err error) {
+	reqs, limits = map[api.ResourceName]resource.Quantity{}, map[api.ResourceName]resource.Quantity{}
+	for _, pod := range pods {
+		podReqs, podLimits, err := getSinglePodTotalRequestsAndLimits(pod)
+		if err != nil {
+			return nil, nil, err
+		}
+		for podReqName, podReqValue := range podReqs {
+			if value, ok := reqs[podReqName]; !ok {
+				reqs[podReqName] = *podReqValue.Copy()
+			} else if err = value.Add(podReqValue); err != nil {
+				return nil, nil, err
+			}
+		}
+		for podLimitName, podLimitValue := range podLimits {
+			if value, ok := limits[podLimitName]; !ok {
+				limits[podLimitName] = *podLimitValue.Copy()
+			} else if err = value.Add(podLimitValue); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	return
+}
+
 func getSinglePodTotalRequestsAndLimits(pod *api.Pod) (reqs map[api.ResourceName]resource.Quantity, limits map[api.ResourceName]resource.Quantity, err error) {
 	reqs, limits = map[api.ResourceName]resource.Quantity{}, map[api.ResourceName]resource.Quantity{}
 	for _, container := range pod.Spec.Containers {
@@ -410,7 +612,7 @@ func shortHumanDuration(d time.Duration) string {
 	return fmt.Sprintf("%dy", int(d.Hours()/24/365))
 }
 
-func genOneNode(node *api.Node) Node {
+func genOneNode(node *api.Node, allPods []*api.Pod) Node {
 	conditionMap := make(map[api.NodeConditionType]*api.NodeCondition)
 	NodeAllConditions := []api.NodeConditionType{api.NodeReady}
 	for i := range node.Status.Conditions {
@@ -440,12 +642,21 @@ func genOneNode(node *api.Node) Node {
 		}
 	}
 
+	pods := filterNodePods(allPods, node.Name)
+	terminated, nonTerminated := filterTerminatedPods(pods)
+	allocated, _ := computeNodeResources(nonTerminated, node)
+
 	return Node{
-		Name:     node.Name,
-		Status:   status,
-		Age:      translateTimestamp(node.CreationTimestamp),
-		Labels:   labels,
-		Capacity: translateResourseList(node.Status.Capacity),
+		Name:               node.Name,
+		Status:             status,
+		Age:                translateTimestamp(node.CreationTimestamp),
+		Labels:             labels,
+		Capacity:           translateResourseList(node.Status.Capacity),
+		Pods:               pods,
+		TerminatedPods:     terminated,
+		NonTerminatedPods:  nonTerminated,
+		AllocatedResources: allocated,
+		FractionPods:       int64(float64(len(pods)) / float64(node.Status.Capacity.Pods().Value()) * 100),
 	}
 }
 

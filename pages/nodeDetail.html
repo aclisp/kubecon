@@ -1,0 +1,233 @@
+{{define "nodeDetail"}}
+{{template "header" .}}
+
+<div class="main">
+    <h1 class="page-header">{{.detail.Name}}</h1>
+
+    <p>
+        {{range $k, $v := .detail.Labels}}
+        {{if eq $v "true"}}
+        {{if eq $k "kvm"}}
+        <span class="label label-warning">{{$k}}</span>
+        {{else}}{{if eq $k "master"}}
+        <span class="label label-primary">{{$k}}</span>
+        {{else}}
+        <span class="label label-default">{{$k}}</span>
+        {{end}}{{end}}
+        {{else}}
+        {{if eq $k "region"}}
+        <span class="label label-info">{{printf "%s=%s" $k $v}}</span>
+        {{else}}
+        <span class="label label-default">{{printf "%s=%s" $k $v}}</span>
+        {{end}}
+        {{end}}
+        {{end}}
+    </p>
+
+    <p>创建于 {{.detail.CreationTimestamp}}</p>
+
+    <table class="table table-condensed table-striped">
+        <caption>状态更新</caption>
+        <thead>
+        <tr>
+            <th>类型</th>
+            <th>状态</th>
+            <th>最近心跳</th>
+            <th>最近改变</th>
+            <th>原因</th>
+            <th>信息</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{range .detail.Conditions}}
+        <tr>
+            <td><span class="label label-default">{{.Type}}</span></td>
+            <td><span class="label label-default">{{.Status}}</span></td>
+            <td>{{.LastHeartbeatTime}}</td>
+            <td>{{.LastTransitionTime}}</td>
+            <td><span class="label label-default">{{.Reason}}</span></td>
+            <td>{{.Message}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+
+    <table class="table table-condensed table-striped">
+        <caption>容量</caption>
+        <tr>
+            <th>CPU核心数</th>
+            <td>{{.detail.Capacity.cpu}}C</td>
+        </tr>
+        <tr>
+            <th>内存</th>
+            <td>{{.detail.Capacity.memory}}</td>
+        </tr>
+        <tr>
+            <th>最大容器数</th>
+            <td>{{.detail.Capacity.pods}}</td>
+        </tr>
+    </table>
+
+    <table class="table table-condensed table-striped">
+        <caption>系统信息</caption>
+        {{with .detail.SystemInfo}}
+        <tr>
+            <th>Machine ID</th>
+            <td><span class="label label-default">{{.MachineID}}</span></td>
+        </tr>
+        <tr>
+            <th>System UUID</th>
+            <td><span class="label label-default">{{.SystemUUID}}</span></td>
+        </tr>
+        <tr>
+            <th>Boot ID</th>
+            <td><span class="label label-default">{{.BootID}}</span></td>
+        </tr>
+        <tr>
+            <th>Kernel Version</th>
+            <td>{{.KernelVersion}}</td>
+        </tr>
+        <tr>
+            <th>OS Image</th>
+            <td>{{.OsImage}}</td>
+        </tr>
+        <tr>
+            <th>Container Runtime Version</th>
+            <td>{{.ContainerRuntimeVersion}}</td>
+        </tr>
+        {{end}}
+    </table>
+
+    <table class="table table-condensed">
+        <caption>活动容器 <span class="badge">{{len .detail.NonTerminatedPodsResources}}</span> 个
+            {{if .detail.TerminatedPodsResources}}
+            ，停止容器 <span class="badge">{{len .detail.TerminatedPodsResources}}</span> 个
+            {{end}}
+        </caption>
+        <thead>
+        <tr>
+            <th>项目</th>
+            <th>实例名</th>
+            <th>CPU分配</th>
+            <th>CPU分配占比</th>
+            <!--th>CPU限制</th-->
+            <!--th>CPU限制占比</th-->
+            <th>内存分配</th>
+            <th>内存分配占比</th>
+            <!--th>内存限制</th-->
+            <!--th>内存限制占比</th-->
+        </tr>
+        </thead>
+        <tbody>
+        {{range .detail.NonTerminatedPodsResources}}
+        <tr>
+            <td>{{.Namespace}}</td>
+            <td>{{.Name}}</td>
+            <td>{{.CpuRequest}}C</td>
+            <td>{{.FractionCpuRequest}}%</td>
+            <!--td>{{.CpuLimit}}C</td-->
+            <!--td>{{.FractionCpuLimit}}%</td-->
+            <td>{{.MemoryRequest}}</td>
+            <td>{{.FractionMemoryRequest}}%</td>
+            <!--td>{{.MemoryLimit}}</td-->
+            <!--td>{{.FractionMemoryLimit}}%</td-->
+        </tr>
+        {{end}}
+        {{with .detail.AllocatedResources}}
+        <tr>
+            <th><span class="label label-default">合计</span></th>
+            <th></th>
+            <th>{{.CpuRequest}}C</th>
+            <th>{{.FractionCpuRequest}}%</th>
+            <!--th>{{.CpuLimit}}C</th-->
+            <!--th>{{.FractionCpuLimit}}%</th-->
+            <th>{{.MemoryRequest}}</th>
+            <th>{{.FractionMemoryRequest}}%</th>
+            <!--th>{{.MemoryLimit}}</th-->
+            <!--th>{{.FractionMemoryLimit}}%</th-->
+        </tr>
+        {{end}}
+        {{range .detail.TerminatedPodsResources}}
+        <tr class="danger">
+            <td>{{.Namespace}}</td>
+            <td>{{.Name}}</td>
+            <td>{{.CpuRequest}}C</td>
+            <td>{{.FractionCpuRequest}}%</td>
+            <!--td>{{.CpuLimit}}C</td-->
+            <!--td>{{.FractionCpuLimit}}%</td-->
+            <td>{{.MemoryRequest}}</td>
+            <td>{{.FractionMemoryRequest}}%</td>
+            <!--td>{{.MemoryLimit}}</td-->
+            <!--td>{{.FractionMemoryLimit}}%</td-->
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+
+    <h2 class="sub-header">容器管理</h2>
+
+    <table class="table table-condensed table-striped">
+        <thead>
+        <tr>
+            <th>实例名</th>
+            <th>镜像</th>
+            <th>状态</th>
+            <th>规格</th>
+            <th>存活</th>
+            <th>网络模式</th>
+            <th>容器IP</th>
+            <th>端口</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{range .pods}}
+        <tr>
+            <td>{{.Name}}</td>
+            <td>
+                {{if .PrivateRepo }}
+                {{.Image}}
+                {{else}}
+                <span class="text-danger" title="来自 Docker Hub">{{.Image}}</span>
+                {{end}}
+            </td>
+            <td>
+                {{if eq .Status "Running"}}
+                <span class="label label-success">{{.Status}}</span>
+                {{else}}
+                <span class="label label-danger">{{.Status}}</span>
+                {{end}}
+                {{if eq .ReadyContainers .TotalContainers}}
+                <span class="label label-success" title="就绪/总数">{{printf "%d/%d" .ReadyContainers .TotalContainers}}</span>
+                {{else}}
+                <span class="label label-danger" title="就绪/总数">{{printf "%d/%d" .ReadyContainers .TotalContainers}}</span>
+                {{end}}
+                <span class="label label-default" title="重启次数">{{.Restarts}}</span>
+            </td>
+            <td>
+                <span class="label label-default" title="CPU核心数">{{.Requests.cpu}}C</span>
+                <span class="label label-default" title="内存">{{.Requests.memory}}</span>
+            </td>
+            <td>{{.Age}}</td>
+            <td>
+                {{if .HostNetwork}}
+                <span class="label label-warning">HOST</span>
+                {{else}}
+                <span class="label label-primary">NAT</span>
+                {{end}}
+            </td>
+            <td><span class="label label-default">{{.PodIP}}</span></td>
+            <td>{{if .HostNetwork}}
+                {{range .Ports}} <span class="label label-warning">{{.}}</span> {{end}}
+                {{else}}
+                {{range .Ports}} <span class="label label-primary" title="主机端口->容器端口">{{.}}</span> {{end}}
+                {{end}}
+            </td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+
+</div>
+
+{{template "footer" .}}
+{{end}}
