@@ -197,7 +197,7 @@ type Pod struct {
 	HostNetwork     bool
 	HostIP          string
 	PodIP           string
-	Ports           string
+	Ports           []string
 }
 
 type Node struct {
@@ -265,6 +265,9 @@ func genReplicationControllers(list *api.ReplicationControllerList) (rcs []Repli
 
 func genServices(list *api.ServiceList) (svcs []Service) {
 	for i := range list.Items {
+		if list.Items[i].Name == "kubernetes" {
+			continue
+		}
 		svcs = append(svcs, genOneService(&list.Items[i]))
 	}
 	return
@@ -272,6 +275,9 @@ func genServices(list *api.ServiceList) (svcs []Service) {
 
 func genEndpoints(list *api.EndpointsList) (eps []Endpoint) {
 	for i := range list.Items {
+		if list.Items[i].Name == "kubernetes" {
+			continue
+		}
 		eps = append(eps, genOneEndpoint(&list.Items[i]))
 	}
 	return
@@ -307,19 +313,23 @@ func genOnePod(pod *api.Pod) Pod {
 		reason = "Terminating"
 	}
 	podIP := ""
-	ports := ""
+	portString := ""
 	if pod.Spec.HostNetwork {
 		podIP = ""
 		for i := range pod.Spec.Containers {
 			for j := range pod.Spec.Containers[i].Ports {
 				port := pod.Spec.Containers[i].Ports[j]
-				ports += fmt.Sprintf("%d/%s,", port.HostPort, port.Protocol)
+				portString += fmt.Sprintf("%d/%s,", port.HostPort, port.Protocol)
 			}
 		}
-		ports = strings.TrimSuffix(ports, ",")
+		portString = strings.TrimSuffix(portString, ",")
 	} else {
 		podIP = pod.Status.PodIP
-		ports = portMapping.FindStringSubmatch(pod.Status.Message)[1]
+		portString = portMapping.FindStringSubmatch(pod.Status.Message)[1]
+	}
+	var ports []string
+	for _, p := range strings.Split(portString, ",") {
+		ports = append(ports, strings.TrimSuffix(p, "/TCP"))
 	}
 	image := pod.Spec.Containers[0].Image
 	privateRepo := false
@@ -491,6 +501,7 @@ func makePorts(ports []api.ServicePort) []string {
 	for ix := range ports {
 		port := &ports[ix]
 		pieces[ix] = fmt.Sprintf("%d/%s", port.Port, port.Protocol)
+		pieces[ix] = strings.TrimSuffix(pieces[ix], "/TCP")
 	}
 	return pieces
 }

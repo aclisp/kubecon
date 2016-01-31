@@ -2,10 +2,10 @@
 {{template "header" .}}
 
 <div class="main">
-    <h1 class="page-header">{{.title}}</h1>
+    <h1 class="page-header">项目 {{.title}}</h1>
 
 <table class="table table-condensed table-striped">
-    <caption>Controller</caption>
+    <caption>副本控制器</caption>
     <thead>
     <tr>
         <th>实例名</th>
@@ -34,6 +34,7 @@
     </tbody>
 </table>
 
+{{if .svcs}}
 <table class="table table-condensed table-striped">
     <caption>LB Frontend</caption>
     <thead>
@@ -70,7 +71,9 @@
     {{end}}
     </tbody>
 </table>
+{{end}}
 
+{{if .eps}}
 <table class="table table-condensed table-striped">
     <caption>LB Backend</caption>
     <thead>
@@ -91,6 +94,7 @@
     </tbody>
 </table>
 </div>
+{{end}}
 
 {{template "footer" .}}
 {{end}}

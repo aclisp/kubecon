@@ -2,7 +2,7 @@
 {{template "header" .}}
 
 <div class="main">
-    <h1 class="page-header">{{.title}}</h1>
+    <h1 class="page-header">容器管理</h1>
 
 <table class="table table-condensed table-striped">
     <thead>
@@ -25,7 +25,7 @@
                 {{if .PrivateRepo }}
                     {{.Image}}
                 {{else}}
-                    <span class="text-danger">{{.Image}}</span>
+                    <span class="text-danger" title="来自 Docker Hub">{{.Image}}</span>
                 {{end}}
             </td>
             <td>
@@ -35,11 +35,11 @@
                     <span class="label label-danger">{{.Status}}</span>
                 {{end}}
                 {{if eq .ReadyContainers .TotalContainers}}
-                    <span class="label label-success">{{printf "%d/%d" .ReadyContainers .TotalContainers}}</span>
+                    <span class="label label-success" title="就绪/总数">{{printf "%d/%d" .ReadyContainers .TotalContainers}}</span>
                 {{else}}
-                    <span class="label label-danger">{{printf "%d/%d" .ReadyContainers .TotalContainers}}</span>
+                    <span class="label label-danger" title="就绪/总数">{{printf "%d/%d" .ReadyContainers .TotalContainers}}</span>
                 {{end}}
-                <span class="label label-default">{{.Restarts}}</span>
+                <span class="label label-default" title="重启次数">{{.Restarts}}</span>
             </td>
             <td>{{.Age}}</td>
             <td>
@@ -51,7 +51,12 @@
             </td>
             <td>{{.HostIP}}</td>
             <td><span class="label label-default">{{.PodIP}}</span></td>
-            <td>{{.Ports}}</td>
+            <td>{{if .HostNetwork}}
+                {{range .Ports}} <span class="label label-warning">{{.}}</span> {{end}}
+                {{else}}
+                {{range .Ports}} <span class="label label-info" title="主机端口->容器端口">{{.}}</span> {{end}}
+                {{end}}
+            </td>
         </tr>
         {{end}}
     </tbody>
