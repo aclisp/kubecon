@@ -9,6 +9,7 @@
     <tr>
         <th>主机</th>
         <th>状态</th>
+        <th>容量</th>
         <th>存活</th>
         <th>标签</th>
     </tr>
@@ -25,6 +26,11 @@
                     <span class="label label-danger">{{.}}</span>
                 {{end}}
             {{end}}
+        </td>
+        <td>
+            <span class="label label-default" title="CPU核心数">{{.Capacity.cpu}}C</span>
+            <span class="label label-default" title="内存">{{.Capacity.memory}}</span>
+            <span class="label label-default" title="最大容器数">{{.Capacity.pods}}</span>
         </td>
         <td>{{.Age}}</td>
         <td>

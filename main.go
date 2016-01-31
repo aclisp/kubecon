@@ -12,6 +12,7 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/resource"
 	api_uv "k8s.io/kubernetes/pkg/api/unversioned"
 	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
 	kube_clientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
@@ -198,13 +199,16 @@ type Pod struct {
 	HostIP          string
 	PodIP           string
 	Ports           []string
+	Requests        map[string]string
+	Limits          map[string]string
 }
 
 type Node struct {
-	Name   string
-	Status []string
-	Age    string
-	Labels map[string]string
+	Name     string
+	Status   []string
+	Age      string
+	Labels   map[string]string
+	Capacity map[string]string
 }
 
 type Namespace struct {
@@ -337,6 +341,7 @@ func genOnePod(pod *api.Pod) Pod {
 		image = strings.TrimPrefix(image, PrivateRepoPrefix)
 		privateRepo = true
 	}
+	req, limit, _ := getSinglePodTotalRequestsAndLimits(pod)
 
 	return Pod{
 		Name:            pod.Name,
@@ -351,7 +356,30 @@ func genOnePod(pod *api.Pod) Pod {
 		HostIP:          pod.Spec.NodeName,
 		PodIP:           podIP,
 		Ports:           ports,
+		Requests:        translateResourseList(req),
+		Limits:          translateResourseList(limit),
 	}
+}
+
+func getSinglePodTotalRequestsAndLimits(pod *api.Pod) (reqs map[api.ResourceName]resource.Quantity, limits map[api.ResourceName]resource.Quantity, err error) {
+	reqs, limits = map[api.ResourceName]resource.Quantity{}, map[api.ResourceName]resource.Quantity{}
+	for _, container := range pod.Spec.Containers {
+		for name, quantity := range container.Resources.Requests {
+			if value, ok := reqs[name]; !ok {
+				reqs[name] = *quantity.Copy()
+			} else if err = value.Add(quantity); err != nil {
+				return nil, nil, err
+			}
+		}
+		for name, quantity := range container.Resources.Limits {
+			if value, ok := limits[name]; !ok {
+				limits[name] = *quantity.Copy()
+			} else if err = value.Add(quantity); err != nil {
+				return nil, nil, err
+			}
+		}
+	}
+	return
 }
 
 // translateTimestamp returns the elapsed time since timestamp in
@@ -413,11 +441,20 @@ func genOneNode(node *api.Node) Node {
 	}
 
 	return Node{
-		Name:   node.Name,
-		Status: status,
-		Age:    translateTimestamp(node.CreationTimestamp),
-		Labels: labels,
+		Name:     node.Name,
+		Status:   status,
+		Age:      translateTimestamp(node.CreationTimestamp),
+		Labels:   labels,
+		Capacity: translateResourseList(node.Status.Capacity),
 	}
+}
+
+func translateResourseList(resourceList api.ResourceList) map[string]string {
+	result := make(map[string]string)
+	for k, v := range resourceList {
+		result[string(k)] = v.String()
+	}
+	return result
 }
 
 func genOneReplicationController(rc *api.ReplicationController) ReplicationController {
