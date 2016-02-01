@@ -367,7 +367,10 @@ func genOnePod(pod *api.Pod) page.Pod {
 		portString = strings.TrimSuffix(portString, ",")
 	} else {
 		podIP = pod.Status.PodIP
-		portString = portMapping.FindStringSubmatch(pod.Status.Message)[1]
+		matches := portMapping.FindStringSubmatch(pod.Status.Message)
+		if len(matches) > 1 {
+			portString = matches[1]
+		}
 	}
 	var ports []string
 	for _, p := range strings.Split(portString, ",") {
