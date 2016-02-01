@@ -8,27 +8,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aclisp/kubecon/pkg/kubeclient"
+	"github.com/aclisp/kubecon/pkg/page"
+	"github.com/aclisp/kubecon/pkg/util"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 
 	"k8s.io/kubernetes/pkg/api"
-	"k8s.io/kubernetes/pkg/api/resource"
-	api_uv "k8s.io/kubernetes/pkg/api/unversioned"
-	kube_client "k8s.io/kubernetes/pkg/client/unversioned"
-	kube_clientcmd "k8s.io/kubernetes/pkg/client/unversioned/clientcmd"
-	kube_clientcmdapi "k8s.io/kubernetes/pkg/client/unversioned/clientcmd/api"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/labels"
-	"k8s.io/kubernetes/pkg/util/sets"
 )
 
 const (
-	APIVersion        = "v1"
 	PrivateRepoPrefix = "61.160.36.122:8080/"
 )
 
 var (
-	kubeClient  *kube_client.Client
 	portMapping *regexp.Regexp
 )
 
@@ -38,11 +33,7 @@ func main() {
 	flag.Set("logtostderr", "true")
 	flag.Parse()
 
-	var err error
-	kubeClient, err = getKubeClient()
-	if err != nil {
-		glog.Fatalf("Can not connect to kubernetes: %v", err)
-	}
+	kubeclient.Init()
 	portMapping = regexp.MustCompile(`PortMapping\((.*)\)`)
 
 	r := gin.Default()
@@ -60,77 +51,30 @@ func main() {
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
 }
 
-type NodeDetail struct {
-	Name                       string
-	Labels                     map[string]string
-	CreationTimestamp          string
-	Conditions                 []api.NodeCondition
-	Capacity                   map[string]string
-	SystemInfo                 api.NodeSystemInfo
-	Pods                       []*api.Pod
-	TerminatedPods             []*api.Pod
-	NonTerminatedPods          []*api.Pod
-	TerminatedPodsResources    []Resources
-	NonTerminatedPodsResources []Resources
-	AllocatedResources         Resources
-}
-
-type Resources struct {
-	Namespace             string
-	Name                  string
-	CpuRequest            string
-	CpuLimit              string
-	MemoryRequest         string
-	MemoryLimit           string
-	FractionCpuRequest    int64
-	FractionCpuLimit      int64
-	FractionMemoryRequest int64
-	FractionMemoryLimit   int64
-}
-
-func getAllPods() ([]*api.Pod, error) {
-	namespaces, err := kubeClient.Namespaces().List(labels.Everything(), fields.Everything())
-	if err != nil {
-		return nil, err
-	}
-	var result []*api.Pod
-	for i := range namespaces.Items {
-		namespace := namespaces.Items[i].Name
-		podList, err := kubeClient.Pods(namespace).List(labels.Everything(), fields.Everything())
-		if err != nil {
-			glog.Errorf("Can not get pods in namespace '%s': %v", namespace, err)
-			continue
-		}
-		for j := range podList.Items {
-			pod := &podList.Items[j]
-			result = append(result, pod)
-		}
-	}
-	return result, nil
-}
-
 func describeNode(c *gin.Context) {
 	nodename := c.Param("no")
-	node, err := kubeClient.Nodes().Get(nodename)
+
+	node, err := kubeclient.Get().Nodes().Get(nodename)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
-	d := NodeDetail{
-		Name:              nodename,
+
+	d := page.NodeDetail{
+		Name:              node.Name,
 		Labels:            node.Labels,
 		CreationTimestamp: node.CreationTimestamp.Time.Format(time.RFC1123Z),
 		Conditions:        node.Status.Conditions,
-		Capacity:          translateResourseList(node.Status.Capacity),
+		Capacity:          util.TranslateResourseList(node.Status.Capacity),
 		SystemInfo:        node.Status.NodeInfo,
 	}
-	allPods, err := getAllPods()
+	allPods, err := kubeclient.GetAllPods()
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
-	d.Pods = filterNodePods(allPods, nodename)
-	d.TerminatedPods, d.NonTerminatedPods = filterTerminatedPods(d.Pods)
+	d.Pods = util.FilterNodePods(allPods, node)
+	d.TerminatedPods, d.NonTerminatedPods = util.FilterTerminatedPods(d.Pods)
 	d.NonTerminatedPodsResources = computePodsResources(d.NonTerminatedPods, node)
 	d.TerminatedPodsResources = computePodsResources(d.TerminatedPods, node)
 	d.AllocatedResources, err = computeNodeResources(d.NonTerminatedPods, node)
@@ -139,7 +83,7 @@ func describeNode(c *gin.Context) {
 		return
 	}
 
-	var pods []Pod
+	var pods []page.Pod
 	for _, pod := range d.Pods {
 		pods = append(pods, genOnePod(pod))
 	}
@@ -151,17 +95,17 @@ func describeNode(c *gin.Context) {
 	})
 }
 
-func computeNodeResources(nonTerminated []*api.Pod, node *api.Node) (Resources, error) {
-	reqs, limits, err := getPodsTotalRequestsAndLimits(nonTerminated)
+func computeNodeResources(nonTerminated []*api.Pod, node *api.Node) (page.Resources, error) {
+	reqs, limits, err := util.GetPodsTotalRequestsAndLimits(nonTerminated)
 	if err != nil {
-		return Resources{}, err
+		return page.Resources{}, err
 	}
 	cpuReqs, cpuLimits, memoryReqs, memoryLimits := reqs[api.ResourceCPU], limits[api.ResourceCPU], reqs[api.ResourceMemory], limits[api.ResourceMemory]
 	fractionCpuReqs := float64(cpuReqs.MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue()) * 100
 	fractionCpuLimits := float64(cpuLimits.MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue()) * 100
 	fractionMemoryReqs := float64(memoryReqs.MilliValue()) / float64(node.Status.Capacity.Memory().MilliValue()) * 100
 	fractionMemoryLimits := float64(memoryLimits.MilliValue()) / float64(node.Status.Capacity.Memory().MilliValue()) * 100
-	return Resources{
+	return page.Resources{
 		CpuRequest:            cpuReqs.String(),
 		CpuLimit:              cpuLimits.String(),
 		MemoryRequest:         memoryReqs.String(),
@@ -173,7 +117,7 @@ func computeNodeResources(nonTerminated []*api.Pod, node *api.Node) (Resources, 
 	}, nil
 }
 
-func computePodsResources(pods []*api.Pod, node *api.Node) (result []Resources) {
+func computePodsResources(pods []*api.Pod, node *api.Node) (result []page.Resources) {
 	for _, pod := range pods {
 		m, err := computePodResources(pod, node)
 		if err != nil {
@@ -184,17 +128,17 @@ func computePodsResources(pods []*api.Pod, node *api.Node) (result []Resources) 
 	return
 }
 
-func computePodResources(pod *api.Pod, node *api.Node) (Resources, error) {
-	req, limit, err := getSinglePodTotalRequestsAndLimits(pod)
+func computePodResources(pod *api.Pod, node *api.Node) (page.Resources, error) {
+	req, limit, err := util.GetSinglePodTotalRequestsAndLimits(pod)
 	if err != nil {
-		return Resources{}, err
+		return page.Resources{}, err
 	}
 	cpuReq, cpuLimit, memoryReq, memoryLimit := req[api.ResourceCPU], limit[api.ResourceCPU], req[api.ResourceMemory], limit[api.ResourceMemory]
 	fractionCpuReq := float64(cpuReq.MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue()) * 100
 	fractionCpuLimit := float64(cpuLimit.MilliValue()) / float64(node.Status.Capacity.Cpu().MilliValue()) * 100
 	fractionMemoryReq := float64(memoryReq.MilliValue()) / float64(node.Status.Capacity.Memory().MilliValue()) * 100
 	fractionMemoryLimit := float64(memoryLimit.MilliValue()) / float64(node.Status.Capacity.Memory().MilliValue()) * 100
-	return Resources{
+	return page.Resources{
 		Namespace:             pod.Namespace,
 		Name:                  pod.Name,
 		CpuRequest:            cpuReq.String(),
@@ -208,47 +152,26 @@ func computePodResources(pod *api.Pod, node *api.Node) (Resources, error) {
 	}, nil
 }
 
-func filterNodePods(pods []*api.Pod, nodename string) (result []*api.Pod) {
-	for _, pod := range pods {
-		if pod.Spec.NodeName != nodename {
-			continue
-		}
-		result = append(result, pod)
-	}
-	return
-}
-
-func filterTerminatedPods(pods []*api.Pod) (terminated []*api.Pod, nonTerminated []*api.Pod) {
-	for _, pod := range pods {
-		if pod.Status.Phase == api.PodSucceeded || pod.Status.Phase == api.PodFailed {
-			terminated = append(terminated, pod)
-		} else {
-			nonTerminated = append(nonTerminated, pod)
-		}
-	}
-	return
-}
-
 func index(c *gin.Context) {
-	namespaces, err := kubeClient.Namespaces().List(labels.Everything(), fields.Everything())
+	namespaces, err := kubeclient.Get().Namespaces().List(labels.Everything(), fields.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
-	summary := Summary{}
+	summary := page.Summary{}
 	for i := range namespaces.Items {
 		namespace := namespaces.Items[i].Name
-		podList, err := kubeClient.Pods(namespace).List(labels.Everything(), fields.Everything())
+		podList, err := kubeclient.Get().Pods(namespace).List(labels.Everything(), fields.Everything())
 		if err != nil {
 			glog.Errorf("Can not get pods in namespace '%s': %v", namespace, err)
 			continue
 		}
-		summary.Namespaces = append(summary.Namespaces, Namespace{
+		summary.Namespaces = append(summary.Namespaces, page.Namespace{
 			Name:     namespace,
 			PodCount: len(podList.Items),
 		})
 	}
-	nodeList, err := kubeClient.Nodes().List(labels.Everything(), fields.Everything())
+	nodeList, err := kubeclient.Get().Nodes().List(labels.Everything(), fields.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
@@ -262,7 +185,7 @@ func index(c *gin.Context) {
 }
 
 func listNodes(c *gin.Context) {
-	list, err := kubeClient.Nodes().List(labels.Everything(), fields.Everything())
+	list, err := kubeclient.Get().Nodes().List(labels.Everything(), fields.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
@@ -288,7 +211,7 @@ func listPodsInNamespace(c *gin.Context) {
 		}
 	}
 
-	list, err := kubeClient.Pods(ns).List(labelSelector, fields.Everything())
+	list, err := kubeclient.Get().Pods(ns).List(labelSelector, fields.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
@@ -302,17 +225,17 @@ func listPodsInNamespace(c *gin.Context) {
 
 func listOthersInNamespace(c *gin.Context) {
 	ns := c.Param("ns")
-	rcList, err := kubeClient.ReplicationControllers(ns).List(labels.Everything())
+	rcList, err := kubeclient.Get().ReplicationControllers(ns).List(labels.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
-	svcList, err := kubeClient.Services(ns).List(labels.Everything())
+	svcList, err := kubeclient.Get().Services(ns).List(labels.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
-	epList, err := kubeClient.Endpoints(ns).List(labels.Everything())
+	epList, err := kubeclient.Get().Endpoints(ns).List(labels.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
@@ -327,124 +250,29 @@ func listOthersInNamespace(c *gin.Context) {
 	})
 }
 
-func getConfigOverrides() (*kube_clientcmd.ConfigOverrides, error) {
-	kubeConfigOverride := kube_clientcmd.ConfigOverrides{
-		ClusterInfo: kube_clientcmdapi.Cluster{
-			APIVersion: APIVersion,
-		},
-	}
-
-	kubeConfigOverride.ClusterInfo.Server = fmt.Sprintf("%s://%s", "https", "61.160.36.122")
-	kubeConfigOverride.ClusterInfo.InsecureSkipTLSVerify = true
-
-	return &kubeConfigOverride, nil
-}
-
-func getKubeClient() (*kube_client.Client, error) {
-	configOverrides, err := getConfigOverrides()
-	if err != nil {
-		return nil, err
-	}
-
-	kubeConfig := &kube_client.Config{
-		Host:     configOverrides.ClusterInfo.Server,
-		Version:  configOverrides.ClusterInfo.APIVersion,
-		Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
-		Username: "test",
-		Password: "test123",
-	}
-	kubeClient := kube_client.NewOrDie(kubeConfig)
-	return kubeClient, nil
-}
-
-type Pod struct {
-	Name            string
-	Image           string
-	PrivateRepo     bool
-	TotalContainers int
-	ReadyContainers int
-	Status          string
-	Restarts        int
-	Age             string
-	HostNetwork     bool
-	HostIP          string
-	PodIP           string
-	Ports           []string
-	Requests        map[string]string
-	Limits          map[string]string
-}
-
-type Node struct {
-	Name               string
-	Status             []string
-	Age                string
-	Labels             map[string]string
-	Capacity           map[string]string
-	Pods               []*api.Pod
-	TerminatedPods     []*api.Pod
-	NonTerminatedPods  []*api.Pod
-	AllocatedResources Resources
-	FractionPods       int64
-}
-
-type Namespace struct {
-	Name     string
-	PodCount int
-}
-
-type Summary struct {
-	Namespaces []Namespace
-	NodeCount  int
-}
-
-type ReplicationController struct {
-	Name            string
-	DesiredReplicas int
-	CurrentReplicas int
-	Age             string
-	Selector        map[string]string
-	SelectorString  string
-}
-
-type Service struct {
-	Name           string
-	InternalIP     string
-	ExternalIP     string
-	Ports          []string
-	Age            string
-	Selector       map[string]string
-	SelectorString string
-}
-
-type Endpoint struct {
-	Name      string
-	Age       string
-	Endpoints string
-}
-
-func genNodes(list *api.NodeList) (nodes []Node) {
-	allPods, _ := getAllPods()
+func genNodes(list *api.NodeList) (nodes []page.Node) {
+	allPods, _ := kubeclient.GetAllPods()
 	for i := range list.Items {
 		nodes = append(nodes, genOneNode(&list.Items[i], allPods))
 	}
 	return
 }
 
-func genPods(list *api.PodList) (pods []Pod) {
+func genPods(list *api.PodList) (pods []page.Pod) {
 	for i := range list.Items {
 		pods = append(pods, genOnePod(&list.Items[i]))
 	}
 	return
 }
 
-func genReplicationControllers(list *api.ReplicationControllerList) (rcs []ReplicationController) {
+func genReplicationControllers(list *api.ReplicationControllerList) (rcs []page.ReplicationController) {
 	for i := range list.Items {
 		rcs = append(rcs, genOneReplicationController(&list.Items[i]))
 	}
 	return
 }
 
-func genServices(list *api.ServiceList) (svcs []Service) {
+func genServices(list *api.ServiceList) (svcs []page.Service) {
 	for i := range list.Items {
 		if list.Items[i].Name == "kubernetes" {
 			continue
@@ -454,7 +282,7 @@ func genServices(list *api.ServiceList) (svcs []Service) {
 	return
 }
 
-func genEndpoints(list *api.EndpointsList) (eps []Endpoint) {
+func genEndpoints(list *api.EndpointsList) (eps []page.Endpoint) {
 	for i := range list.Items {
 		if list.Items[i].Name == "kubernetes" {
 			continue
@@ -464,7 +292,7 @@ func genEndpoints(list *api.EndpointsList) (eps []Endpoint) {
 	return
 }
 
-func genOnePod(pod *api.Pod) Pod {
+func genOnePod(pod *api.Pod) page.Pod {
 	restarts := 0
 	totalContainers := len(pod.Spec.Containers)
 	readyContainers := 0
@@ -518,9 +346,9 @@ func genOnePod(pod *api.Pod) Pod {
 		image = strings.TrimPrefix(image, PrivateRepoPrefix)
 		privateRepo = true
 	}
-	req, limit, _ := getSinglePodTotalRequestsAndLimits(pod)
+	req, limit, _ := util.GetSinglePodTotalRequestsAndLimits(pod)
 
-	return Pod{
+	return page.Pod{
 		Name:            pod.Name,
 		Image:           image,
 		PrivateRepo:     privateRepo,
@@ -528,91 +356,17 @@ func genOnePod(pod *api.Pod) Pod {
 		ReadyContainers: readyContainers,
 		Status:          reason,
 		Restarts:        restarts,
-		Age:             translateTimestamp(pod.CreationTimestamp),
+		Age:             util.TranslateTimestamp(pod.CreationTimestamp),
 		HostNetwork:     pod.Spec.HostNetwork,
 		HostIP:          pod.Spec.NodeName,
 		PodIP:           podIP,
 		Ports:           ports,
-		Requests:        translateResourseList(req),
-		Limits:          translateResourseList(limit),
+		Requests:        util.TranslateResourseList(req),
+		Limits:          util.TranslateResourseList(limit),
 	}
 }
 
-func getPodsTotalRequestsAndLimits(pods []*api.Pod) (reqs map[api.ResourceName]resource.Quantity, limits map[api.ResourceName]resource.Quantity, err error) {
-	reqs, limits = map[api.ResourceName]resource.Quantity{}, map[api.ResourceName]resource.Quantity{}
-	for _, pod := range pods {
-		podReqs, podLimits, err := getSinglePodTotalRequestsAndLimits(pod)
-		if err != nil {
-			return nil, nil, err
-		}
-		for podReqName, podReqValue := range podReqs {
-			if value, ok := reqs[podReqName]; !ok {
-				reqs[podReqName] = *podReqValue.Copy()
-			} else if err = value.Add(podReqValue); err != nil {
-				return nil, nil, err
-			}
-		}
-		for podLimitName, podLimitValue := range podLimits {
-			if value, ok := limits[podLimitName]; !ok {
-				limits[podLimitName] = *podLimitValue.Copy()
-			} else if err = value.Add(podLimitValue); err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-	return
-}
-
-func getSinglePodTotalRequestsAndLimits(pod *api.Pod) (reqs map[api.ResourceName]resource.Quantity, limits map[api.ResourceName]resource.Quantity, err error) {
-	reqs, limits = map[api.ResourceName]resource.Quantity{}, map[api.ResourceName]resource.Quantity{}
-	for _, container := range pod.Spec.Containers {
-		for name, quantity := range container.Resources.Requests {
-			if value, ok := reqs[name]; !ok {
-				reqs[name] = *quantity.Copy()
-			} else if err = value.Add(quantity); err != nil {
-				return nil, nil, err
-			}
-		}
-		for name, quantity := range container.Resources.Limits {
-			if value, ok := limits[name]; !ok {
-				limits[name] = *quantity.Copy()
-			} else if err = value.Add(quantity); err != nil {
-				return nil, nil, err
-			}
-		}
-	}
-	return
-}
-
-// translateTimestamp returns the elapsed time since timestamp in
-// human-readable approximation.
-func translateTimestamp(timestamp api_uv.Time) string {
-	if timestamp.IsZero() {
-		return "<unknown>"
-	}
-	return shortHumanDuration(time.Now().Sub(timestamp.Time))
-}
-
-func shortHumanDuration(d time.Duration) string {
-	// Allow deviation no more than 2 seconds(excluded) to tolerate machine time
-	// inconsistence, it can be considered as almost now.
-	if seconds := int(d.Seconds()); seconds < -1 {
-		return fmt.Sprintf("<invalid>")
-	} else if seconds < 0 {
-		return fmt.Sprintf("0s")
-	} else if seconds < 60 {
-		return fmt.Sprintf("%ds", seconds)
-	} else if minutes := int(d.Minutes()); minutes < 60 {
-		return fmt.Sprintf("%dm", minutes)
-	} else if hours := int(d.Hours()); hours < 24 {
-		return fmt.Sprintf("%dh", hours)
-	} else if hours < 24*364 {
-		return fmt.Sprintf("%dd", hours/24)
-	}
-	return fmt.Sprintf("%dy", int(d.Hours()/24/365))
-}
-
-func genOneNode(node *api.Node, allPods []*api.Pod) Node {
+func genOneNode(node *api.Node, allPods []*api.Pod) page.Node {
 	conditionMap := make(map[api.NodeConditionType]*api.NodeCondition)
 	NodeAllConditions := []api.NodeConditionType{api.NodeReady}
 	for i := range node.Status.Conditions {
@@ -642,16 +396,16 @@ func genOneNode(node *api.Node, allPods []*api.Pod) Node {
 		}
 	}
 
-	pods := filterNodePods(allPods, node.Name)
-	terminated, nonTerminated := filterTerminatedPods(pods)
+	pods := util.FilterNodePods(allPods, node)
+	terminated, nonTerminated := util.FilterTerminatedPods(pods)
 	allocated, _ := computeNodeResources(nonTerminated, node)
 
-	return Node{
+	return page.Node{
 		Name:               node.Name,
 		Status:             status,
-		Age:                translateTimestamp(node.CreationTimestamp),
+		Age:                util.TranslateTimestamp(node.CreationTimestamp),
 		Labels:             labels,
-		Capacity:           translateResourseList(node.Status.Capacity),
+		Capacity:           util.TranslateResourseList(node.Status.Capacity),
 		Pods:               pods,
 		TerminatedPods:     terminated,
 		NonTerminatedPods:  nonTerminated,
@@ -660,20 +414,12 @@ func genOneNode(node *api.Node, allPods []*api.Pod) Node {
 	}
 }
 
-func translateResourseList(resourceList api.ResourceList) map[string]string {
-	result := make(map[string]string)
-	for k, v := range resourceList {
-		result[string(k)] = v.String()
-	}
-	return result
-}
-
-func genOneReplicationController(rc *api.ReplicationController) ReplicationController {
-	result := ReplicationController{
+func genOneReplicationController(rc *api.ReplicationController) page.ReplicationController {
+	result := page.ReplicationController{
 		Name:            rc.Name,
 		DesiredReplicas: rc.Spec.Replicas,
 		CurrentReplicas: rc.Status.Replicas,
-		Age:             translateTimestamp(rc.CreationTimestamp),
+		Age:             util.TranslateTimestamp(rc.CreationTimestamp),
 		Selector:        rc.Spec.Selector,
 	}
 	for k, v := range result.Selector {
@@ -683,15 +429,15 @@ func genOneReplicationController(rc *api.ReplicationController) ReplicationContr
 	return result
 }
 
-func genOneService(svc *api.Service) Service {
+func genOneService(svc *api.Service) page.Service {
 	internalIP := svc.Spec.ClusterIP
-	externalIP := getServiceExternalIP(svc)
-	result := Service{
+	externalIP := util.GetServiceExternalIP(svc)
+	result := page.Service{
 		Name:       svc.Name,
 		InternalIP: internalIP,
 		ExternalIP: externalIP,
-		Ports:      makePorts(svc.Spec.Ports),
-		Age:        translateTimestamp(svc.CreationTimestamp),
+		Ports:      util.MakePorts(svc.Spec.Ports),
+		Age:        util.TranslateTimestamp(svc.CreationTimestamp),
 		Selector:   svc.Spec.Selector,
 	}
 	for k, v := range result.Selector {
@@ -701,89 +447,10 @@ func genOneService(svc *api.Service) Service {
 	return result
 }
 
-func genOneEndpoint(ep *api.Endpoints) Endpoint {
-	return Endpoint{
+func genOneEndpoint(ep *api.Endpoints) page.Endpoint {
+	return page.Endpoint{
 		Name:      ep.Name,
-		Age:       translateTimestamp(ep.CreationTimestamp),
-		Endpoints: formatEndpoints(ep, nil),
+		Age:       util.TranslateTimestamp(ep.CreationTimestamp),
+		Endpoints: util.FormatEndpoints(ep, nil),
 	}
-}
-
-func getServiceExternalIP(svc *api.Service) string {
-	switch svc.Spec.Type {
-	case api.ServiceTypeClusterIP:
-		if len(svc.Spec.ExternalIPs) > 0 {
-			return strings.Join(svc.Spec.ExternalIPs, ",")
-		}
-		return ""
-	case api.ServiceTypeNodePort:
-		if len(svc.Spec.ExternalIPs) > 0 {
-			return strings.Join(svc.Spec.ExternalIPs, ",")
-		}
-		return "nodes"
-	case api.ServiceTypeLoadBalancer:
-		lbIps := loadBalancerStatusStringer(svc.Status.LoadBalancer)
-		if len(svc.Spec.ExternalIPs) > 0 {
-			result := append(strings.Split(lbIps, ","), svc.Spec.ExternalIPs...)
-			return strings.Join(result, ",")
-		}
-		return lbIps
-	}
-	return "unknown"
-}
-
-// loadBalancerStatusStringer behaves just like a string interface and converts the given status to a string.
-func loadBalancerStatusStringer(s api.LoadBalancerStatus) string {
-	ingress := s.Ingress
-	result := []string{}
-	for i := range ingress {
-		if ingress[i].IP != "" {
-			result = append(result, ingress[i].IP)
-		}
-	}
-	return strings.Join(result, ",")
-}
-
-func makePorts(ports []api.ServicePort) []string {
-	pieces := make([]string, len(ports))
-	for ix := range ports {
-		port := &ports[ix]
-		pieces[ix] = fmt.Sprintf("%d/%s", port.Port, port.Protocol)
-		pieces[ix] = strings.TrimSuffix(pieces[ix], "/TCP")
-	}
-	return pieces
-}
-
-// Pass ports=nil for all ports.
-func formatEndpoints(endpoints *api.Endpoints, ports sets.String) string {
-	if len(endpoints.Subsets) == 0 {
-		return ""
-	}
-	list := []string{}
-	max := 3
-	more := false
-	count := 0
-	for i := range endpoints.Subsets {
-		ss := &endpoints.Subsets[i]
-		for i := range ss.Ports {
-			port := &ss.Ports[i]
-			if ports == nil || ports.Has(port.Name) {
-				for i := range ss.Addresses {
-					if len(list) == max {
-						more = true
-					}
-					addr := &ss.Addresses[i]
-					if !more {
-						list = append(list, fmt.Sprintf("%s:%d", addr.IP, port.Port))
-					}
-					count++
-				}
-			}
-		}
-	}
-	ret := strings.Join(list, ",")
-	if more {
-		return fmt.Sprintf("%s + %d more...", ret, count-max)
-	}
-	return ret
 }
