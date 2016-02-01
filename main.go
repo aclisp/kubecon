@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net/http"
@@ -45,10 +47,41 @@ func main() {
 	r.GET("/", index)
 	r.GET("/namespaces/:ns", listOthersInNamespace)
 	r.GET("/namespaces/:ns/pods", listPodsInNamespace)
+	r.GET("/namespaces/:ns/pods/:po", describePod)
 	r.GET("/nodes", listNodes)
 	r.GET("/nodes/:no", describeNode)
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
+}
+
+func describePod(c *gin.Context) {
+	namespace := c.Param("ns")
+	podname := c.Param("po")
+
+	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	b, err := json.Marshal(pod)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "  ")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.HTML(http.StatusOK, "podDetail", gin.H{
+		"title": namespace + "/" + podname,
+		"pod":   podname,
+		"json":  out.String(),
+	})
 }
 
 func describeNode(c *gin.Context) {
@@ -89,9 +122,9 @@ func describeNode(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "nodeDetail", gin.H{
-		"title":  "Node",
-		"detail": d,
-		"pods":   pods,
+		"title": nodename,
+		"node":  d,
+		"pods":  pods,
 	})
 }
 
@@ -179,7 +212,7 @@ func index(c *gin.Context) {
 	summary.NodeCount = len(nodeList.Items)
 
 	c.HTML(http.StatusOK, "index", gin.H{
-		"title":   "Summary",
+		"title":   "Sigma Overview",
 		"summary": summary,
 	})
 }
@@ -192,13 +225,13 @@ func listNodes(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "nodeList", gin.H{
-		"title": "Nodes",
+		"title": "Sigma Nodes",
 		"nodes": genNodes(list),
 	})
 }
 
 func listPodsInNamespace(c *gin.Context) {
-	ns := c.Param("ns")
+	namespace := c.Param("ns")
 	labelSelectorString, ok := c.GetQuery("labelSelector")
 	var labelSelector labels.Selector
 	if !ok {
@@ -211,39 +244,39 @@ func listPodsInNamespace(c *gin.Context) {
 		}
 	}
 
-	list, err := kubeclient.Get().Pods(ns).List(labelSelector, fields.Everything())
+	list, err := kubeclient.Get().Pods(namespace).List(labelSelector, fields.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
 
 	c.HTML(http.StatusOK, "podList", gin.H{
-		"title": "Pods",
+		"title": "Sigma Pods",
 		"pods":  genPods(list),
 	})
 }
 
 func listOthersInNamespace(c *gin.Context) {
-	ns := c.Param("ns")
-	rcList, err := kubeclient.Get().ReplicationControllers(ns).List(labels.Everything())
+	namespace := c.Param("ns")
+	rcList, err := kubeclient.Get().ReplicationControllers(namespace).List(labels.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
-	svcList, err := kubeclient.Get().Services(ns).List(labels.Everything())
+	svcList, err := kubeclient.Get().Services(namespace).List(labels.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
-	epList, err := kubeclient.Get().Endpoints(ns).List(labels.Everything())
+	epList, err := kubeclient.Get().Endpoints(namespace).List(labels.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
 
 	c.HTML(http.StatusOK, "nsInfo", gin.H{
-		"title": ns,
-		"ns":    ns,
+		"title": namespace,
+		"ns":    namespace,
 		"rcs":   genReplicationControllers(rcList),
 		"svcs":  genServices(svcList),
 		"eps":   genEndpoints(epList),
@@ -349,6 +382,7 @@ func genOnePod(pod *api.Pod) page.Pod {
 	req, limit, _ := util.GetSinglePodTotalRequestsAndLimits(pod)
 
 	return page.Pod{
+		Namespace:       pod.Namespace,
 		Name:            pod.Name,
 		Image:           image,
 		PrivateRepo:     privateRepo,

@@ -2,10 +2,10 @@
 {{template "header" .}}
 
 <div class="main">
-    <h1 class="page-header">{{.detail.Name}}</h1>
+    <h1 class="page-header">{{.node.Name}}</h1>
 
     <p>
-        {{range $k, $v := .detail.Labels}}
+        {{range $k, $v := .node.Labels}}
         {{if eq $v "true"}}
         {{if eq $k "kvm"}}
         <span class="label label-warning">{{$k}}</span>
@@ -24,7 +24,7 @@
         {{end}}
     </p>
 
-    <p>创建于 {{.detail.CreationTimestamp}}</p>
+    <p>创建于 {{.node.CreationTimestamp}}</p>
 
     <table class="table table-condensed table-striped">
         <caption>状态更新</caption>
@@ -39,7 +39,7 @@
         </tr>
         </thead>
         <tbody>
-        {{range .detail.Conditions}}
+        {{range .node.Conditions}}
         <tr>
             <td><span class="label label-default">{{.Type}}</span></td>
             <td><span class="label label-default">{{.Status}}</span></td>
@@ -56,21 +56,21 @@
         <caption>容量</caption>
         <tr>
             <th>CPU核心数</th>
-            <td>{{.detail.Capacity.cpu}}C</td>
+            <td>{{.node.Capacity.cpu}}C</td>
         </tr>
         <tr>
             <th>内存</th>
-            <td>{{.detail.Capacity.memory}}</td>
+            <td>{{.node.Capacity.memory}}</td>
         </tr>
         <tr>
             <th>最大容器数</th>
-            <td>{{.detail.Capacity.pods}}</td>
+            <td>{{.node.Capacity.pods}}</td>
         </tr>
     </table>
 
     <table class="table table-condensed table-striped">
         <caption>系统信息</caption>
-        {{with .detail.SystemInfo}}
+        {{with .node.SystemInfo}}
         <tr>
             <th>Machine ID</th>
             <td><span class="label label-default">{{.MachineID}}</span></td>
@@ -99,9 +99,9 @@
     </table>
 
     <table class="table table-condensed">
-        <caption>活动容器 <span class="badge">{{len .detail.NonTerminatedPodsResources}}</span> 个
-            {{if .detail.TerminatedPodsResources}}
-            ，停止容器 <span class="badge">{{len .detail.TerminatedPodsResources}}</span> 个
+        <caption>活动容器 <span class="badge">{{len .node.NonTerminatedPodsResources}}</span> 个
+            {{if .node.TerminatedPodsResources}}
+            ，停止容器 <span class="badge">{{len .node.TerminatedPodsResources}}</span> 个
             {{end}}
         </caption>
         <thead>
@@ -119,7 +119,7 @@
         </tr>
         </thead>
         <tbody>
-        {{range .detail.NonTerminatedPodsResources}}
+        {{range .node.NonTerminatedPodsResources}}
         <tr>
             <td>{{.Namespace}}</td>
             <td>{{.Name}}</td>
@@ -133,7 +133,7 @@
             <!--td>{{.FractionMemoryLimit}}%</td-->
         </tr>
         {{end}}
-        {{with .detail.AllocatedResources}}
+        {{with .node.AllocatedResources}}
         <tr>
             <th><span class="label label-default">合计</span></th>
             <th></th>
@@ -147,7 +147,7 @@
             <!--th>{{.FractionMemoryLimit}}%</th-->
         </tr>
         {{end}}
-        {{range .detail.TerminatedPodsResources}}
+        {{range .node.TerminatedPodsResources}}
         <tr class="text-muted">
             <td>{{.Namespace}}</td>
             <td>{{.Name}}</td>
@@ -182,7 +182,9 @@
         <tbody>
         {{range .pods}}
         <tr>
-            <td>{{.Name}}</td>
+            <td>
+                <a href="/namespaces/{{.Namespace}}/pods/{{.Name}}">{{.Name}}</a>
+            </td>
             <td>
                 {{if .PrivateRepo }}
                 {{.Image}}

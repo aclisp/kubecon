@@ -33,6 +33,7 @@ type Resources struct {
 }
 
 type Pod struct {
+	Namespace       string
 	Name            string
 	Image           string
 	PrivateRepo     bool

@@ -21,7 +21,9 @@
     <tbody>
         {{range .pods}}
         <tr>
-            <td>{{.Name}}</td>
+            <td>
+                <a href="/namespaces/{{.Namespace}}/pods/{{.Name}}">{{.Name}}</a>
+            </td>
             <td>
                 {{if .PrivateRepo }}
                     {{.Image}}

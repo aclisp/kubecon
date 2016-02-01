@@ -1,0 +1,12 @@
+{{define "podDetail"}}
+{{template "header" .}}
+
+<div class="main">
+    <h1 class="page-header">{{.pod}}</h1>
+
+    <pre>{{.json}}</pre>
+
+</div>
+
+{{template "footer" .}}
+{{end}}
