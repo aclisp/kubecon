@@ -12,6 +12,11 @@
                         <a href="/namespaces/{{.Name}}">
                             {{.Name}}
                         </a>
+                        {{if .EventCount}}
+                        <a href="/namespaces/{{.Name}}/events">
+                            <span class="badge">{{.EventCount}}</span>
+                        </a>
+                        {{end}}
                     </div>
                     <div class="panel-body">
                         <a href="/namespaces/{{.Name}}/pods">

@@ -1,0 +1,51 @@
+{{define "eventList"}}
+{{template "header" .}}
+
+<div class="main">
+    <h1 class="page-header">Events</h1>
+
+    <table class="table table-condensed table-striped">
+        <thead>
+        <tr>
+            <th>首次上报</th>
+            <th>末次上报</th>
+            <th>次数</th>
+            <th>实例名</th>
+            <th>类型</th>
+            <th>子对象</th>
+            <th>原因</th>
+            <th>模块</th>
+            <th>主机</th>
+            <th>信息</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{range .events}}
+        <tr>
+            <td>{{.FirstSeen}}</td>
+            <td>{{.LastSeen}}</td>
+            <td><span class="badge">{{.Count}}</span></td>
+            <td>{{.SubobjectName}}</td>
+            <td><span class="label label-default">{{.SubobjectKind}}</span></td>
+            <td>{{.SubobjectPath}}</td>
+            <td>
+                {{if eq .Reason "Created"}}<span class="label label-success">{{.Reason}}</span>{{end}}
+                {{if eq .Reason "Started"}}<span class="label label-primary">{{.Reason}}</span>{{end}}
+                {{if eq .Reason "Killing"}}<span class="label label-warning">{{.Reason}}</span>{{end}}
+                {{if eq .Reason "Pulled"}}<span class="label label-info">{{.Reason}}</span>{{end}}
+                {{if not (eq .Reason "Created" "Started" "Killing" "Pulled")}}<span class="label label-default">{{.Reason}}</span>{{end}}
+            </td>
+            <td>{{.FromComponent}}</td>
+            <td>
+                <a href="/nodes/{{.FromHost}}">{{.FromHost}}</a>
+            </td>
+            <td>{{.Message}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+
+</div>
+
+{{template "footer" .}}
+{{end}}

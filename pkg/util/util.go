@@ -12,6 +12,19 @@ import (
 	api_uv "k8s.io/kubernetes/pkg/api/unversioned"
 )
 
+func FilterEventsFromNode(events []api.Event, node *api.Node) (result []api.Event) {
+	for _, ev := range events {
+		if ev.Source.Host != node.Name {
+			continue
+		}
+		if ev.InvolvedObject.Kind == "Node" {
+			continue
+		}
+		result = append(result, ev)
+	}
+	return
+}
+
 func FilterNodePods(pods []*api.Pod, node *api.Node) (result []*api.Pod) {
 	for _, pod := range pods {
 		if pod.Spec.NodeName != node.Name {

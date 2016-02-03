@@ -98,6 +98,44 @@
         {{end}}
     </table>
 
+    {{with .nodeEvents}}
+    <table class="table table-condensed">
+        <caption>节点事件 <span class="badge">{{len .}}</span> 个</caption>
+        <thead>
+        <tr>
+            <th>首次上报</th>
+            <th>末次上报</th>
+            <th>次数</th>
+            <th>实例名</th>
+            <th>类型</th>
+            <th>原因</th>
+            <th>模块</th>
+            <th>信息</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{range .}}
+        <tr>
+            <td>{{.FirstSeen}}</td>
+            <td>{{.LastSeen}}</td>
+            <td><span class="badge">{{.Count}}</span></td>
+            <td>{{.SubobjectName}}</td>
+            <td><span class="label label-default">{{.SubobjectKind}}</span></td>
+            <td>
+                {{if eq .Reason "Created"}}<span class="label label-success">{{.Reason}}</span>{{end}}
+                {{if eq .Reason "Started"}}<span class="label label-primary">{{.Reason}}</span>{{end}}
+                {{if eq .Reason "Killing"}}<span class="label label-warning">{{.Reason}}</span>{{end}}
+                {{if eq .Reason "Pulled"}}<span class="label label-info">{{.Reason}}</span>{{end}}
+                {{if not (eq .Reason "Created" "Started" "Killing" "Pulled")}}<span class="label label-default">{{.Reason}}</span>{{end}}
+            </td>
+            <td>{{.FromComponent}}</td>
+            <td>{{.Message}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{end}}
+
     <table class="table table-condensed">
         <caption>活动容器 <span class="badge">{{len .node.NonTerminatedPodsResources}}</span> 个
             {{if .node.TerminatedPodsResources}}
@@ -228,6 +266,46 @@
         {{end}}
         </tbody>
     </table>
+
+    {{with .events}}
+    <h2 class="sub-header">容器事件</h2>
+    <table class="table table-condensed table-striped">
+        <thead>
+        <tr>
+            <th>首次上报</th>
+            <th>末次上报</th>
+            <th>次数</th>
+            <th>实例名</th>
+            <th>类型</th>
+            <th>子对象</th>
+            <th>原因</th>
+            <th>模块</th>
+            <th>信息</th>
+        </tr>
+        </thead>
+        <tbody>
+        {{range .}}
+        <tr>
+            <td>{{.FirstSeen}}</td>
+            <td>{{.LastSeen}}</td>
+            <td><span class="badge">{{.Count}}</span></td>
+            <td>{{.SubobjectName}}</td>
+            <td><span class="label label-default">{{.SubobjectKind}}</span></td>
+            <td>{{.SubobjectPath}}</td>
+            <td>
+                {{if eq .Reason "Created"}}<span class="label label-success">{{.Reason}}</span>{{end}}
+                {{if eq .Reason "Started"}}<span class="label label-primary">{{.Reason}}</span>{{end}}
+                {{if eq .Reason "Killing"}}<span class="label label-warning">{{.Reason}}</span>{{end}}
+                {{if eq .Reason "Pulled"}}<span class="label label-info">{{.Reason}}</span>{{end}}
+                {{if not (eq .Reason "Created" "Started" "Killing" "Pulled")}}<span class="label label-default">{{.Reason}}</span>{{end}}
+            </td>
+            <td>{{.FromComponent}}</td>
+            <td>{{.Message}}</td>
+        </tr>
+        {{end}}
+        </tbody>
+    </table>
+    {{end}}
 
 </div>
 

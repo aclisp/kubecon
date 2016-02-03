@@ -19,6 +19,19 @@ type NodeDetail struct {
 	AllocatedResources         Resources
 }
 
+type Event struct {
+	FirstSeen     string
+	LastSeen      string
+	Count         int
+	FromComponent string
+	FromHost      string
+	SubobjectName string
+	SubobjectKind string
+	SubobjectPath string
+	Reason        string
+	Message       string
+}
+
 type Resources struct {
 	Namespace             string
 	Name                  string
@@ -64,8 +77,9 @@ type Node struct {
 }
 
 type Namespace struct {
-	Name     string
-	PodCount int
+	Name       string
+	PodCount   int
+	EventCount int
 }
 
 type Summary struct {

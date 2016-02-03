@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -18,7 +19,9 @@ import (
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/fields"
+	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/labels"
+	"k8s.io/kubernetes/pkg/types"
 )
 
 const (
@@ -48,6 +51,7 @@ func main() {
 	r.GET("/namespaces/:ns", listOthersInNamespace)
 	r.GET("/namespaces/:ns/pods", listPodsInNamespace)
 	r.GET("/namespaces/:ns/pods/:po", describePod)
+	r.GET("/namespaces/:ns/events", listEventsInNamespace)
 	r.GET("/nodes", listNodes)
 	r.GET("/nodes/:no", describeNode)
 
@@ -121,10 +125,35 @@ func describeNode(c *gin.Context) {
 		pods = append(pods, genOnePod(pod))
 	}
 
+	var nodeEvents []page.Event
+	var nodeEventList *api.EventList
+	if ref, err := api.GetReference(node); err != nil {
+		glog.Errorf("Unable to construct reference to '%#v': %v", node, err)
+	} else {
+		ref.UID = types.UID(ref.Name)
+		if nodeEventList, err = kubeclient.Get().Events("").Search(ref); err != nil {
+			glog.Errorf("Unable to search events for '%#v': %v", node, err)
+		}
+	}
+	if nodeEventList != nil {
+		nodeEvents = genEvents(nodeEventList)
+	}
+
+	var events []page.Event
+	var eventList *api.EventList
+	if eventList, err = kubeclient.Get().Events("").List(labels.Everything(), fields.Everything()); err != nil {
+		glog.Errorf("Unable to search events for '%#v': %v", node, err)
+	}
+	if eventList != nil {
+		events = genEvents(&api.EventList{Items: util.FilterEventsFromNode(eventList.Items, node)})
+	}
+
 	c.HTML(http.StatusOK, "nodeDetail", gin.H{
-		"title": nodename,
-		"node":  d,
-		"pods":  pods,
+		"title":      nodename,
+		"node":       d,
+		"pods":       pods,
+		"events":     events,
+		"nodeEvents": nodeEvents,
 	})
 }
 
@@ -199,9 +228,15 @@ func index(c *gin.Context) {
 			glog.Errorf("Can not get pods in namespace '%s': %v", namespace, err)
 			continue
 		}
+		eventList, err := kubeclient.Get().Events(namespace).List(labels.Everything(), fields.Everything())
+		if err != nil {
+			glog.Errorf("Can not get events in namespace '%s': %v", namespace, err)
+			eventList = &api.EventList{}
+		}
 		summary.Namespaces = append(summary.Namespaces, page.Namespace{
-			Name:     namespace,
-			PodCount: len(podList.Items),
+			Name:       namespace,
+			PodCount:   len(podList.Items),
+			EventCount: len(eventList.Items),
 		})
 	}
 	nodeList, err := kubeclient.Get().Nodes().List(labels.Everything(), fields.Everything())
@@ -256,6 +291,21 @@ func listPodsInNamespace(c *gin.Context) {
 	})
 }
 
+func listEventsInNamespace(c *gin.Context) {
+	namespace := c.Param("ns")
+
+	list, err := kubeclient.Get().Events(namespace).List(labels.Everything(), fields.Everything())
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.HTML(http.StatusOK, "eventList", gin.H{
+		"title":  "Sigma Events",
+		"events": genEvents(list),
+	})
+}
+
 func listOthersInNamespace(c *gin.Context) {
 	namespace := c.Param("ns")
 	rcList, err := kubeclient.Get().ReplicationControllers(namespace).List(labels.Everything())
@@ -294,6 +344,14 @@ func genNodes(list *api.NodeList) (nodes []page.Node) {
 func genPods(list *api.PodList) (pods []page.Pod) {
 	for i := range list.Items {
 		pods = append(pods, genOnePod(&list.Items[i]))
+	}
+	return
+}
+
+func genEvents(list *api.EventList) (events []page.Event) {
+	sort.Sort(sort.Reverse(kubectl.SortableEvents(list.Items)))
+	for i := range list.Items {
+		events = append(events, genOneEvent(&list.Items[i]))
 	}
 	return
 }
@@ -489,5 +547,20 @@ func genOneEndpoint(ep *api.Endpoints) page.Endpoint {
 		Name:      ep.Name,
 		Age:       util.TranslateTimestamp(ep.CreationTimestamp),
 		Endpoints: util.FormatEndpoints(ep, nil),
+	}
+}
+
+func genOneEvent(ev *api.Event) page.Event {
+	return page.Event{
+		FirstSeen:     util.TranslateTimestamp(ev.FirstTimestamp),
+		LastSeen:      util.TranslateTimestamp(ev.LastTimestamp),
+		Count:         ev.Count,
+		FromComponent: ev.Source.Component,
+		FromHost:      ev.Source.Host,
+		SubobjectName: ev.InvolvedObject.Name,
+		SubobjectKind: ev.InvolvedObject.Kind,
+		SubobjectPath: ev.InvolvedObject.FieldPath,
+		Reason:        ev.Reason,
+		Message:       ev.Message,
 	}
 }
