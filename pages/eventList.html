@@ -33,7 +33,8 @@
                 {{if eq .Reason "Started"}}<span class="label label-primary">{{.Reason}}</span>{{end}}
                 {{if eq .Reason "Killing"}}<span class="label label-warning">{{.Reason}}</span>{{end}}
                 {{if eq .Reason "Pulled"}}<span class="label label-info">{{.Reason}}</span>{{end}}
-                {{if not (eq .Reason "Created" "Started" "Killing" "Pulled")}}<span class="label label-default">{{.Reason}}</span>{{end}}
+                {{if eq .Reason "Failed"}}<span class="label label-danger">{{.Reason}}</span>{{end}}
+                {{if not (eq .Reason "Created" "Started" "Killing" "Pulled" "Failed")}}<span class="label label-default">{{.Reason}}</span>{{end}}
             </td>
             <td>{{.FromComponent}}</td>
             <td>
