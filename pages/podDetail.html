@@ -4,6 +4,12 @@
 <div class="main">
     <h1 class="page-header">{{.pod}}</h1>
 
+    <div class="btn-group" role="group">
+        <a class="btn btn-default active" href="/namespaces/{{.namespace}}/pods/{{.pod}}" role="button">容器描述</a>
+        <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}/log" role="button">当前日志</a>
+        <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}/log?previous" role="button">上次日志</a>
+    </div>
+
     <pre>{{.json}}</pre>
 
 </div>

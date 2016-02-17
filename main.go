@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"net/http"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,11 +53,70 @@ func main() {
 	r.GET("/namespaces/:ns", listOthersInNamespace)
 	r.GET("/namespaces/:ns/pods", listPodsInNamespace)
 	r.GET("/namespaces/:ns/pods/:po", describePod)
+	r.GET("/namespaces/:ns/pods/:po/log", readPodLog)
 	r.GET("/namespaces/:ns/events", listEventsInNamespace)
 	r.GET("/nodes", listNodes)
 	r.GET("/nodes/:no", describeNode)
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
+}
+
+func readPodLog(c *gin.Context) {
+	namespace := c.Param("ns")
+	podname := c.Param("po")
+	_, previous := c.GetQuery("previous")
+
+	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	container := pod.Spec.Containers[0].Name
+
+	limitBytes := int64(256 * 1024)
+	tailLines := int64(500)
+	logOptions := &api.PodLogOptions{
+		Container:  container,
+		Follow:     false,
+		Previous:   previous,
+		Timestamps: false,
+		TailLines:  &tailLines,
+		LimitBytes: &limitBytes,
+	}
+
+	req := kubeclient.Get().RESTClient.
+		Get().
+		Namespace(namespace).
+		Name(podname).
+		Resource("pods").
+		SubResource("log").
+		Param("container", logOptions.Container).
+		Param("follow", strconv.FormatBool(logOptions.Follow)).
+		Param("previous", strconv.FormatBool(logOptions.Previous)).
+		Param("timestamps", strconv.FormatBool(logOptions.Timestamps)).
+		Param("tailLines", strconv.FormatInt(*logOptions.TailLines, 10)).
+		Param("limitBytes", strconv.FormatInt(*logOptions.LimitBytes, 10))
+	readCloser, err := req.Stream()
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	defer readCloser.Close()
+
+	var out bytes.Buffer
+	_, err = io.Copy(&out, readCloser)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.HTML(http.StatusOK, "podLog", gin.H{
+		"title":     podname,
+		"namespace": namespace,
+		"pod":       podname,
+		"log":       out.String(),
+		"previous":  strconv.FormatBool(logOptions.Previous),
+	})
 }
 
 func describePod(c *gin.Context) {
@@ -82,9 +143,10 @@ func describePod(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "podDetail", gin.H{
-		"title": namespace + "/" + podname,
-		"pod":   podname,
-		"json":  out.String(),
+		"title":     podname,
+		"namespace": namespace,
+		"pod":       podname,
+		"json":      out.String(),
 	})
 }
 
