@@ -47,7 +47,7 @@ func main() {
 	r.Static("/js", "js")
 	r.Static("/css", "css")
 	r.Static("/fonts", "fonts")
-	r.LoadHTMLGlob("pages/*")
+	r.LoadHTMLGlob("pages/*.html")
 
 	r.GET("/", index)
 	r.GET("/namespaces/:ns", listOthersInNamespace)
@@ -57,6 +57,8 @@ func main() {
 	r.GET("/namespaces/:ns/events", listEventsInNamespace)
 	r.GET("/nodes", listNodes)
 	r.GET("/nodes/:no", describeNode)
+
+	r.GET("/help", help)
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
 }
@@ -274,6 +276,12 @@ func computePodResources(pod *api.Pod, node *api.Node) (page.Resources, error) {
 		FractionMemoryRequest: int64(fractionMemoryReq),
 		FractionMemoryLimit:   int64(fractionMemoryLimit),
 	}, nil
+}
+
+func help(c *gin.Context) {
+	c.HTML(http.StatusOK, "help", gin.H{
+		"title": "Sigma Help",
+	})
 }
 
 func index(c *gin.Context) {
