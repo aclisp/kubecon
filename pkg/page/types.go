@@ -45,11 +45,15 @@ type Resources struct {
 	FractionMemoryLimit   int64
 }
 
+type PodImage struct {
+	Image       string
+	PrivateRepo bool
+}
+
 type Pod struct {
 	Namespace       string
 	Name            string
-	Image           string
-	PrivateRepo     bool
+	Images          []PodImage
 	TotalContainers int
 	ReadyContainers int
 	Status          string

@@ -25,10 +25,14 @@
                 <a href="/namespaces/{{.Namespace}}/pods/{{.Name}}">{{.Name}}</a>
             </td>
             <td>
+                {{range .Images}}
+                <span class="glyphicon glyphicon-cd"></span>
                 {{if .PrivateRepo }}
                     {{.Image}}
                 {{else}}
                     <span class="text-danger" title="来自 Docker Hub">{{.Image}}</span>
+                {{end}}
+                <br/>
                 {{end}}
             </td>
             <td>

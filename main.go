@@ -504,19 +504,24 @@ func genOnePod(pod *api.Pod) page.Pod {
 	for _, p := range strings.Split(portString, ",") {
 		ports = append(ports, strings.TrimSuffix(p, "/TCP"))
 	}
-	image := pod.Spec.Containers[0].Image
-	privateRepo := false
-	if strings.HasPrefix(image, PrivateRepoPrefix) {
-		image = strings.TrimPrefix(image, PrivateRepoPrefix)
-		privateRepo = true
+	var images []page.PodImage
+	for _, container := range pod.Spec.Containers {
+		image := page.PodImage{
+			Image:       container.Image,
+			PrivateRepo: false,
+		}
+		if strings.HasPrefix(image.Image, PrivateRepoPrefix) {
+			image.Image = strings.TrimPrefix(image.Image, PrivateRepoPrefix)
+			image.PrivateRepo = true
+		}
+		images = append(images, image)
 	}
 	req, limit, _ := util.GetSinglePodTotalRequestsAndLimits(pod)
 
 	return page.Pod{
 		Namespace:       pod.Namespace,
 		Name:            pod.Name,
-		Image:           image,
-		PrivateRepo:     privateRepo,
+		Images:          images,
 		TotalContainers: totalContainers,
 		ReadyContainers: readyContainers,
 		Status:          reason,
