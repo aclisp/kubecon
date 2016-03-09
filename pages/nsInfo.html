@@ -9,6 +9,7 @@
     <thead>
     <tr>
         <th>实例名</th>
+        <th>副本模板</th>
         <th>设定副本数</th>
         <th>当前副本数</th>
         <th>存活</th>
@@ -22,6 +23,17 @@
             <a href="/namespaces/{{$.ns}}/pods?labelSelector={{.SelectorString|urlquery}}">
             {{.Name}}
             </a>
+        </td>
+        <td>
+            {{range .TemplateImages}}
+            <span class="glyphicon glyphicon-cd"></span>
+            {{if .PrivateRepo }}
+                {{.Image}}
+            {{else}}
+                <span class="text-danger" title="来自 Docker Hub">{{.Image}}</span>
+            {{end}}
+            <br/>
+            {{end}}
         </td>
         <td>{{.DesiredReplicas}}</td>
         <td>{{.CurrentReplicas}}</td>

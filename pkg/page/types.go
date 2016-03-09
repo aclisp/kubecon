@@ -98,6 +98,7 @@ type ReplicationController struct {
 	Age             string
 	Selector        map[string]string
 	SelectorString  string
+	TemplateImages  []PodImage
 }
 
 type Service struct {

@@ -504,24 +504,12 @@ func genOnePod(pod *api.Pod) page.Pod {
 	for _, p := range strings.Split(portString, ",") {
 		ports = append(ports, strings.TrimSuffix(p, "/TCP"))
 	}
-	var images []page.PodImage
-	for _, container := range pod.Spec.Containers {
-		image := page.PodImage{
-			Image:       container.Image,
-			PrivateRepo: false,
-		}
-		if strings.HasPrefix(image.Image, PrivateRepoPrefix) {
-			image.Image = strings.TrimPrefix(image.Image, PrivateRepoPrefix)
-			image.PrivateRepo = true
-		}
-		images = append(images, image)
-	}
 	req, limit, _ := util.GetSinglePodTotalRequestsAndLimits(pod)
 
 	return page.Pod{
 		Namespace:       pod.Namespace,
 		Name:            pod.Name,
-		Images:          images,
+		Images:          populatePodImages(pod.Spec.Containers),
 		TotalContainers: totalContainers,
 		ReadyContainers: readyContainers,
 		Status:          reason,
@@ -596,7 +584,23 @@ func genOneReplicationController(rc *api.ReplicationController) page.Replication
 		result.SelectorString += fmt.Sprintf("%s=%s,", k, v)
 	}
 	result.SelectorString = strings.TrimSuffix(result.SelectorString, ",")
+	result.TemplateImages = populatePodImages(rc.Spec.Template.Spec.Containers)
 	return result
+}
+
+func populatePodImages(containers []api.Container) (images []page.PodImage) {
+	for _, container := range containers {
+		image := page.PodImage{
+			Image:       container.Image,
+			PrivateRepo: false,
+		}
+		if strings.HasPrefix(image.Image, PrivateRepoPrefix) {
+			image.Image = strings.TrimPrefix(image.Image, PrivateRepoPrefix)
+			image.PrivateRepo = true
+		}
+		images = append(images, image)
+	}
+	return
 }
 
 func genOneService(svc *api.Service) page.Service {
