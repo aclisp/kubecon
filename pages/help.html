@@ -3,68 +3,16 @@
 
 <div class="main">
 
-    <h1 class="page-header">Sigma 控制台</h1>
-    <p>Sigma 控制台目前只能用于查看容器。其他操作需要使用命令行工具 <code>kubectl</code></p>
-    <h2 class="sub-header">创建</h2>
-    <p>Create and run a particular image, possibly replicated.<br>Creates a replication controller to manage the created container(s).</p>
-    <h3 id="usage-">Usage:</h3>
-<pre><code>kubectl run NAME --image=image [--env=&quot;key=value&quot;] [--port=port] [--replicas=replicas] [--dry-run=bool] [--overrides=inline-json] [flags]
-</code></pre><h3 id="examples-">Examples:</h3>
-<pre><code>
-    # Start a single instance of nginx.
-    $ kubectl run nginx --image=nginx
-
-    # Start a single instance of hazelcast and let the container expose port 5701 .
-    $ kubectl run hazelcast --image=hazelcast --port=5701
-
-    # Start a single instance of hazelcast and set environment variables &quot;DNS_DOMAIN=cluster&quot; and &quot;POD_NAMESPACE=default&quot; in the container.
-    $ kubectl run hazelcast --image=hazelcast --env=&quot;DNS_DOMAIN=local&quot; --env=&quot;POD_NAMESPACE=default&quot;
-
-    # Start a replicated instance of nginx.
-    $ kubectl run nginx --image=nginx --replicas=5
-
-    # Dry run. Print the corresponding API objects without creating them.
-    $ kubectl run nginx --image=nginx --dry-run
-
-    # Start a single instance of nginx, but overload the spec of the replication controller with a partial set of values parsed from JSON.
-    $ kubectl run nginx --image=nginx --overrides=&#39;{ &quot;apiVersion&quot;: &quot;v1&quot;, &quot;spec&quot;: { ... } }&#39;
-
-    # Start a single instance of nginx and keep it in the foreground, don&#39;t restart it if it exits.
-    $ kubectl run -i -tty nginx --image=nginx --restart=Never
-
-    # Start the nginx container using the default command, but use custom arguments (arg1 .. argN) for that command.
-    $ kubectl run nginx --image=nginx -- &lt;arg1&gt; &lt;arg2&gt; ... &lt;argN&gt;
-
-    # Start the nginx container using a different command and custom arguments
-    $ kubectl run nginx --image=nginx --command -- &lt;cmd&gt; &lt;arg1&gt; ... &lt;argN&gt;
-</code></pre><h3 id="flags-">Flags:</h3>
-<pre><code>
-    --attach[=false]: If true, wait for the Pod to start running, and then attach to the Pod as if &#39;kubectl attach ...&#39; were called.  Default false, unless &#39;-i/--interactive&#39; is set, in which case the default is true.
-    --command[=false]: If true and extra arguments are present, use them as the &#39;command&#39; field in the container, rather than the &#39;args&#39; field which is the default.
-    --dry-run[=false]: If true, only print the object that would be sent, without sending it.
-    --env=[]: Environment variables to set in the container
-    --generator=&quot;&quot;: The name of the API generator to use.  Default is &#39;run/v1&#39; if --restart=Always, otherwise the default is &#39;run-pod/v1&#39;.
-    --hostport=-1: The host port mapping for the container port. To demonstrate a single-machine container.
-    --image=&quot;&quot;: The image for the container to run.
--l, --labels=&quot;&quot;: Labels to apply to the pod(s).
-    --leave-stdin-open[=false]: If the pod is started in interactive mode or with stdin, leave stdin open after the first attach completes. By default, stdin will be closed after the first attach completes.
-    --limits=&quot;&quot;: The resource requirement limits for this container.  For example, &#39;cpu=200m,memory=512Mi&#39;
-    --no-headers[=false]: When using the default output, don&#39;t print headers.
--o, --output=&quot;&quot;: Output format. One of: json|yaml|wide|name|go-template=...|go-template-file=...|jsonpath=...|jsonpath-file=... See golang template [http://golang.org/pkg/text/template/#pkg-overview] and jsonpath template [http://releases.k8s.io/release-1.1/docs/user-guide/jsonpath.md].
-    --output-version=&quot;&quot;: Output the formatted object with the given version (default api-version).
-    --overrides=&quot;&quot;: An inline JSON override for the generated object. If this is non-empty, it is used to override the generated object. Requires that the object supply a valid apiVersion field.
-    --port=-1: The port that this container exposes.
--r, --replicas=1: Number of replicas to create for this container. Default is 1.
-    --requests=&quot;&quot;: The resource requirement requests for this container.  For example, &#39;cpu=100m,memory=256Mi&#39;
-    --restart=&quot;Always&quot;: The restart policy for this Pod.  Legal values [Always, OnFailure, Never].  If set to &#39;Always&#39; a replication controller is created for this pod, if set to OnFailure or Never, only the Pod is created and --replicas must be 1.  Default &#39;Always&#39;
--a, --show-all[=false]: When printing, show all resources (default hide terminated pods.)
-    --sort-by=&quot;&quot;: If non-empty, sort list types using this field specification.  The field specification is expressed as a JSONPath expression (e.g. &#39;ObjectMeta.Name&#39;). The field in the API resource specified by this JSONPath expression must be an integer or a string.
--i, --stdin[=false]: Keep stdin open on the container(s) in the pod, even if nothing is attached.
-    --template=&quot;&quot;: Template string or path to template file to use when -o=go-template, -o=go-template-file. The template format is golang templates [http://golang.org/pkg/text/template/#pkg-overview].
-    --tty[=false]: Allocated a TTY for each container in the pod.  Because -t is currently shorthand for --template, -t is not supported for --tty. This shorthand is deprecated and we expect to adopt -t for --tty soon.
-</code></pre><h2 class="sub-header">常用</h2>
+    <h1 id="sigma-" class="page-header">Sigma 控制台</h1>
+    <p>Sigma 控制台目前只能用于查看容器。其他操作需要使用 <a href="https://github.com/aclisp/lightvm/tree/master/sigma-sdk">SDK</a>。</p>
+    <h2 id="-" class="sub-header">常用</h2>
     <ul>
-        <li><a href="https://61.160.36.122/swagger-ui/">HTTP REST API</a></li><li><a href="https://61.160.36.122/api/v1/proxy/namespaces/kube-system/services/kubedash">实时资源查看</a></li><li><a href="http://61.160.36.122:9100">Jenkins</a></li><li><a href="http://61.160.36.122:8080/v2/_catalog">私有 Image 仓库</a></li><li><a href="https://docs.docker.com/registry/spec/api/">Docker Registry HTTP API V2</a></li></ul>
+        <li><a href="https://61.160.36.122/swagger-ui/">HTTP REST API</a></li>
+        <li><a href="https://61.160.36.122/api/v1/proxy/namespaces/kube-system/services/kubedash">实时资源查看</a></li>
+        <li><a href="http://61.160.36.122:9100">Jenkins</a></li>
+        <li><a href="http://61.160.36.122:8080/v2/_catalog">私有 Image 仓库</a></li>
+        <li><a href="https://docs.docker.com/registry/spec/api/">Docker Registry HTTP API V2</a></li>
+    </ul>
 
 </div>
 
