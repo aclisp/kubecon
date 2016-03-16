@@ -393,6 +393,13 @@ func listOthersInNamespace(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
+	nodeList, err := kubeclient.Get().Nodes().List(labels.SelectorFromSet(labels.Set{
+		"project": namespace,
+	}), fields.Everything())
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
 
 	c.HTML(http.StatusOK, "nsInfo", gin.H{
 		"title": namespace,
@@ -400,6 +407,7 @@ func listOthersInNamespace(c *gin.Context) {
 		"rcs":   genReplicationControllers(rcList),
 		"svcs":  genServices(svcList),
 		"eps":   genEndpoints(epList),
+		"nodes": genNodes(nodeList),
 	})
 }
 

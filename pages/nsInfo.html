@@ -108,5 +108,9 @@
 </div>
 {{end}}
 
+{{if .nodes}}
+    {{template "nodeTable" .nodes}}
+{{end}}
+
 {{template "footer" .}}
 {{end}}

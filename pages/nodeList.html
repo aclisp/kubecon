@@ -4,76 +4,7 @@
 <div class="main">
     <h1 class="page-header">主机管理</h1>
 
-<table class="table table-condensed table-striped">
-    <thead>
-    <tr>
-        <th>主机</th>
-        <th>状态</th>
-        <th>容量</th>
-        <th>已分配</th>
-        <th>存活</th>
-        <th>标签</th>
-    </tr>
-    </thead>
-    <tbody>
-    {{range .nodes}}
-    <tr>
-        <td>
-            <a href="/nodes/{{.Name}}">{{.Name}}</a>
-        </td>
-        <td>
-            {{range .Status}}
-                {{if eq . "Ready"}}
-                    <span class="label label-success">{{.}}</span>
-                {{else}}
-                    <span class="label label-danger">{{.}}</span>
-                {{end}}
-            {{end}}
-        </td>
-        <td>
-            <span class="label label-default" title="CPU核心数">{{.Capacity.cpu}}C</span>
-            <span class="label label-default" title="内存">{{.Capacity.memory}}</span>
-            <span class="label label-default" title="容器数上限">{{.Capacity.pods}}</span>
-        </td>
-        <td>
-        {{with .AllocatedResources.FractionCpuRequest}}
-            {{if      le . 50}}<span class="label label-success" title="CPU核心数">{{.}}%</span>{{end}}
-            {{if and (gt . 50) (le . 80)}}<span class="label label-warning" title="CPU核心数">{{.}}%</span>{{end}}
-            {{if                gt . 80}}<span class="label label-danger" title="CPU核心数">{{.}}%</span>{{end}}
-        {{end}}
-        {{with .AllocatedResources.FractionMemoryRequest}}
-            {{if      le . 50}}<span class="label label-success" title="内存">{{.}}%</span>{{end}}
-            {{if and (gt . 50) (le . 80)}}<span class="label label-warning" title="内存">{{.}}%</span>{{end}}
-            {{if                gt . 80}}<span class="label label-danger" title="内存">{{.}}%</span>{{end}}
-        {{end}}
-            {{if      le .FractionPods 50}}<span class="label label-success" title="容器数">{{len .Pods}}</span>{{end}}
-            {{if and (gt .FractionPods 50) (le .FractionPods 80)}}<span class="label label-warning" title="容器数">{{len .Pods}}</span>{{end}}
-            {{if                            gt .FractionPods 80}}<span class="label label-danger" title="容器数">{{len .Pods}}</span>{{end}}
-        </td>
-        <td>{{.Age}}</td>
-        <td>
-            {{range $k, $v := .Labels}}
-                {{if eq $v "true"}}
-                    {{if eq $k "kvm"}}
-                        <span class="label label-warning">{{$k}}</span>
-                    {{else}}{{if eq $k "master"}}
-                        <span class="label label-primary">{{$k}}</span>
-                    {{else}}
-                        <span class="label label-default">{{$k}}</span>
-                    {{end}}{{end}}
-                {{else}}
-                    {{if eq $k "region"}}
-                        <span class="label label-info">{{printf "%s=%s" $k $v}}</span>
-                    {{else}}
-                        <span class="label label-default">{{printf "%s=%s" $k $v}}</span>
-                    {{end}}
-                {{end}}
-            {{end}}
-        </td>
-    </tr>
-    {{end}}
-    </tbody>
-</table>
+{{template "nodeTable" .nodes}}
 
 </div>
 
