@@ -14,6 +14,7 @@
     </thead>
     <tbody>
     {{range .}}
+    {{$nodeName := .Name}}
     <tr>
         <td>
             <a href="/nodes/{{.Name}}">{{.Name}}</a>
@@ -22,6 +23,9 @@
             {{range .Status}}
             {{if eq . "Ready"}}
             <span class="label label-success">{{.}}</span>
+            <a href="http://{{$nodeName}}:4194">
+                <span class="glyphicon glyphicon-scale" title="查看实时资源"></span>
+            </a>
             {{else}}
             <span class="label label-danger">{{.}}</span>
             {{end}}
