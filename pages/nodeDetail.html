@@ -148,13 +148,9 @@
             <th>项目</th>
             <th>实例名</th>
             <th>CPU分配</th>
-            <th>CPU分配占比</th>
-            <!--th>CPU限制</th-->
-            <!--th>CPU限制占比</th-->
+            <th>CPU上限</th>
             <th>内存分配</th>
-            <th>内存分配占比</th>
-            <!--th>内存限制</th-->
-            <!--th>内存限制占比</th-->
+            <th>内存上限</th>
         </tr>
         </thead>
         <tbody>
@@ -162,42 +158,38 @@
         <tr>
             <td>{{.Namespace}}</td>
             <td>{{.Name}}</td>
-            <td>{{.CpuRequest}}C</td>
-            <td>{{.FractionCpuRequest}}%</td>
-            <!--td>{{.CpuLimit}}C</td-->
-            <!--td>{{.FractionCpuLimit}}%</td-->
-            <td>{{.MemoryRequest}}</td>
-            <td>{{.FractionMemoryRequest}}%</td>
-            <!--td>{{.MemoryLimit}}</td-->
-            <!--td>{{.FractionMemoryLimit}}%</td-->
+            <td><span class="label label-default">{{.CpuRequest}}C</span>
+            {{.FractionCpuRequest}}%</td>
+            <td><span class="label label-warning">{{.CpuLimit}}C</span>
+            {{.FractionCpuLimit}}%</td>
+            <td><span class="label label-default">{{.MemoryRequest}}</span>
+            {{.FractionMemoryRequest}}%</td>
+            <td><span class="label label-warning">{{.MemoryLimit}}</span>
+            {{.FractionMemoryLimit}}%</td>
         </tr>
         {{end}}
         {{with .node.AllocatedResources}}
         <tr>
-            <th><span class="label label-default">合计</span></th>
+            <th>合计</th>
             <th></th>
-            <th>{{.CpuRequest}}C</th>
             <th>{{.FractionCpuRequest}}%</th>
-            <!--th>{{.CpuLimit}}C</th-->
-            <!--th>{{.FractionCpuLimit}}%</th-->
-            <th>{{.MemoryRequest}}</th>
+            <th>{{.FractionCpuLimit}}%</th>
             <th>{{.FractionMemoryRequest}}%</th>
-            <!--th>{{.MemoryLimit}}</th-->
-            <!--th>{{.FractionMemoryLimit}}%</th-->
+            <th>{{.FractionMemoryLimit}}%</th>
         </tr>
         {{end}}
         {{range .node.TerminatedPodsResources}}
         <tr class="text-muted">
             <td>{{.Namespace}}</td>
             <td>{{.Name}}</td>
-            <td>{{.CpuRequest}}C</td>
-            <td>{{.FractionCpuRequest}}%</td>
-            <!--td>{{.CpuLimit}}C</td-->
-            <!--td>{{.FractionCpuLimit}}%</td-->
-            <td>{{.MemoryRequest}}</td>
-            <td>{{.FractionMemoryRequest}}%</td>
-            <!--td>{{.MemoryLimit}}</td-->
-            <!--td>{{.FractionMemoryLimit}}%</td-->
+            <td><span class="label label-default">{{.CpuRequest}}C</span>
+            {{.FractionCpuRequest}}%</td>
+            <td><span class="label label-warning">{{.CpuLimit}}C</span>
+            {{.FractionCpuLimit}}%</td>
+            <td><span class="label label-default">{{.MemoryRequest}}</span>
+            {{.FractionMemoryRequest}}%</td>
+            <td><span class="label label-warning">{{.MemoryLimit}}</span>
+            {{.FractionMemoryLimit}}%</td>
         </tr>
         {{end}}
         </tbody>
