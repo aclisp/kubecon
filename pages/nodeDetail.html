@@ -66,6 +66,12 @@
             <th>最大容器数</th>
             <td>{{.node.Capacity.pods}}</td>
         </tr>
+        <tr>
+            <th>cAdvisor</th>
+            <td><a href="http://{{.node.Name}}:4194">
+                查看实时资源
+            </a></td>
+        </tr>
     </table>
 
     <table class="table table-condensed table-striped">
