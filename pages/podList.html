@@ -46,7 +46,6 @@
                 {{else}}
                     <span class="label label-danger" title="就绪/总数">{{printf "%d/%d" .ReadyContainers .TotalContainers}}</span>
                 {{end}}
-                <span class="label label-default" title="重启次数">{{.Restarts}}</span>
             </td>
             <td>
                 <span class="label label-default" title="CPU核心数">{{.Requests.cpu}}C</span>
