@@ -4,9 +4,20 @@
 <div class="main">
     <h1 class="page-header">容器管理</h1>
 
+    <p>
+        <button type="button" id="upgrade" name="action" disabled="disabled" class="btn btn-sm btn-warning">升级</button>
+        <button type="button" name="action" disabled="disabled" class="btn btn-sm btn-success">回滚</button>
+        <button type="button" name="action" disabled="disabled" class="btn btn-sm btn-info">启动</button>
+        <button type="button" name="action" disabled="disabled" class="btn btn-sm btn-primary">重启</button>
+        <button type="button" name="action" disabled="disabled" class="btn btn-sm btn-default">停止</button>
+        <button type="button" name="action" disabled="disabled" class="btn btn-sm btn-danger">卸载</button>
+    </p>
+
 <table class="table table-condensed table-striped">
+    <caption>记录数 <span class="badge">{{len .pods}}</span> 个</caption>
     <thead>
         <tr>
+            <th></th>
             <th>实例名</th>
             <th>镜像</th>
             <th>状态</th>
@@ -19,8 +30,38 @@
         </tr>
     </thead>
     <tbody>
+        <tr>
+            <td><input type="checkbox" id="checkall" onclick="toggleAll(this)"></td>
+            <td>全选</td>
+            <td><select id="imageFilter">
+                <option value="">全部</option>
+            {{range .images}}
+            {{if .PrivateRepo}}
+                <option value="{{.Image}}" {{if eq $.queries.image .Image}}selected{{end}}>{{.Image}}</option>
+            {{end}}
+            {{end}}
+            </select></td>
+            <td><select id="statusFilter">
+                <option value="">全部</option>
+            {{range .statuses}}
+                <option value="{{.}}" {{if eq $.queries.status .}}selected{{end}}>{{.}}</option>
+            {{end}}
+            </select></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td><select id="hostFilter">
+                <option value="">全部</option>
+            {{range .hosts}}
+                <option value="{{.}}" {{if eq $.queries.host .}}selected{{end}}>{{.}}</option>
+            {{end}}
+            </select></td>
+            <td></td>
+            <td></td>
+        </tr>
         {{range .pods}}
         <tr>
+            <td><input type="checkbox" id="{{.Name}}" name="checkpod" onclick="toggle1(this); toggle2(this)"></td>
             <td>
                 <a href="/namespaces/{{.Namespace}}/pods/{{.Name}}">{{.Name}}</a>
             </td>
@@ -75,6 +116,83 @@
 </table>
 
 </div>
+
+<script src="/js/jquery-1.11.3.min.js"></script>
+<script src="/js/page.js"></script>
+<script>
+var imageFilter = document.getElementById('imageFilter');
+var statusFilter = document.getElementById('statusFilter');
+var hostFilter = document.getElementById('hostFilter');
+imageFilter.onchange = function() {
+  var queries = {
+    labelSelector: {{.queries.labelSelector}},
+    image: this.options[this.selectedIndex].value,
+    status: {{.queries.status}},
+    host: {{.queries.host}},
+  }
+  location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
+}
+statusFilter.onchange = function() {
+  var queries = {
+    labelSelector: {{.queries.labelSelector}},
+    image: {{.queries.image}},
+    status: this.options[this.selectedIndex].value,
+    host: {{.queries.host}},
+  }
+  location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
+}
+hostFilter.onchange = function() {
+  var queries = {
+    labelSelector: {{.queries.labelSelector}},
+    image: {{.queries.image}},
+    status: {{.queries.status}},
+    host: this.options[this.selectedIndex].value,
+  }
+  location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
+}
+
+function toggleAll(source) {
+  var checkboxes = document.getElementsByName('checkpod');
+  for(var i=0, n=checkboxes.length; i<n; i++) {
+    checkboxes[i].checked = source.checked;
+  }
+  if (checkboxes.length > 0) {
+    $("button[name='action']").prop('disabled', !source.checked);
+  }
+}
+function toggle1(source) {
+  var checkboxes = document.getElementsByName('checkpod');
+  for(var i=0, n=checkboxes.length; i<n; i++) {
+    if (checkboxes[i].checked) {
+      $("button[name='action']").prop('disabled', false);
+      return;
+    }
+  }
+  $("button[name='action']").prop('disabled', true);
+}
+function toggle2(source) {
+  var checkboxes = document.getElementsByName('checkpod');
+  for(var i=0, n=checkboxes.length; i<n; i++) {
+    if (!checkboxes[i].checked) {
+      document.getElementById('checkall').checked = false;
+      return;
+    }
+  }
+  document.getElementById('checkall').checked = true;
+}
+
+var upgradeButton = document.getElementById('upgrade');
+upgradeButton.onclick = function() {
+  var checkboxes = document.getElementsByName('checkpod');
+  var pods = [];
+  for(var i=0, n=checkboxes.length; i<n; i++) {
+    if (checkboxes[i].checked) {
+      pods.push(checkboxes[i].id);
+    }
+  }
+  post('/namespaces/{{.namespace}}/pods.do', {action: 'upgrade', object: JSON.stringify(pods)});
+}
+</script>
 
 {{template "footer" .}}
 {{end}}

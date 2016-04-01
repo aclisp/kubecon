@@ -60,6 +60,8 @@ func main() {
 
 	r.GET("/help", help)
 
+	r.POST("/namespaces/:ns/pods.do", doPods)
+
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
 }
 
@@ -355,9 +357,38 @@ func listPodsInNamespace(c *gin.Context) {
 		return
 	}
 
+	pods := genPods(list)
+	images, statuses, hosts := page.FoldPods(pods)
+
+	image, ok := c.GetQuery("image")
+	if ok && len(image) > 0 {
+		theImage := page.PodImage{Image: image, PrivateRepo: true}
+		pods = page.FilterPodsByImage(pods, theImage)
+	}
+
+	status, ok := c.GetQuery("status")
+	if ok && len(status) > 0 {
+		pods = page.FilterPodsByStatus(pods, status)
+	}
+
+	host, ok := c.GetQuery("host")
+	if ok && len(host) > 0 {
+		pods = page.FilterPodsByHost(pods, host)
+	}
+
 	c.HTML(http.StatusOK, "podList", gin.H{
-		"title": "Sigma Pods",
-		"pods":  genPods(list),
+		"title":     "Sigma Pods",
+		"namespace": namespace,
+		"queries": map[string]string{
+			"labelSelector": labelSelectorString,
+			"image":         image,
+			"status":        status,
+			"host":          host,
+		},
+		"pods":     pods,
+		"images":   images,
+		"statuses": statuses,
+		"hosts":    hosts,
 	})
 }
 
@@ -650,4 +681,12 @@ func genOneEvent(ev *api.Event) page.Event {
 		Reason:        ev.Reason,
 		Message:       ev.Message,
 	}
+}
+
+func doPods(c *gin.Context) {
+	namespace := c.Param("ns")
+	action := c.PostForm("action")
+	object := c.PostForm("object")
+
+	c.String(http.StatusOK, fmt.Sprintf(" namespace: %s;\n action: %s;\n object: %s;\n ", namespace, action, object))
 }
