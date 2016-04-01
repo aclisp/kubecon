@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/aclisp/kubecon/pkg/kube"
 	"github.com/aclisp/kubecon/pkg/kubeclient"
 	"github.com/aclisp/kubecon/pkg/page"
-	"github.com/aclisp/kubecon/pkg/util"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 
@@ -168,7 +168,7 @@ func describeNode(c *gin.Context) {
 		Labels:            node.Labels,
 		CreationTimestamp: node.CreationTimestamp.Time.Format(time.RFC1123Z),
 		Conditions:        node.Status.Conditions,
-		Capacity:          util.TranslateResourseList(node.Status.Capacity),
+		Capacity:          kube.TranslateResourseList(node.Status.Capacity),
 		SystemInfo:        node.Status.NodeInfo,
 	}
 	allPods, err := kubeclient.GetAllPods()
@@ -176,8 +176,8 @@ func describeNode(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
-	d.Pods = util.FilterNodePods(allPods, node)
-	d.TerminatedPods, d.NonTerminatedPods = util.FilterTerminatedPods(d.Pods)
+	d.Pods = kube.FilterNodePods(allPods, node)
+	d.TerminatedPods, d.NonTerminatedPods = kube.FilterTerminatedPods(d.Pods)
 	d.NonTerminatedPodsResources = computePodsResources(d.NonTerminatedPods, node)
 	d.TerminatedPodsResources = computePodsResources(d.TerminatedPods, node)
 	d.AllocatedResources, err = computeNodeResources(d.NonTerminatedPods, node)
@@ -211,7 +211,7 @@ func describeNode(c *gin.Context) {
 		glog.Errorf("Unable to search events for '%#v': %v", node, err)
 	}
 	if eventList != nil {
-		events = genEvents(&api.EventList{Items: util.FilterEventsFromNode(eventList.Items, node)})
+		events = genEvents(&api.EventList{Items: kube.FilterEventsFromNode(eventList.Items, node)})
 	}
 
 	c.HTML(http.StatusOK, "nodeDetail", gin.H{
@@ -224,7 +224,7 @@ func describeNode(c *gin.Context) {
 }
 
 func computeNodeResources(nonTerminated []*api.Pod, node *api.Node) (page.Resources, error) {
-	reqs, limits, err := util.GetPodsTotalRequestsAndLimits(nonTerminated)
+	reqs, limits, err := kube.GetPodsTotalRequestsAndLimits(nonTerminated)
 	if err != nil {
 		return page.Resources{}, err
 	}
@@ -257,7 +257,7 @@ func computePodsResources(pods []*api.Pod, node *api.Node) (result []page.Resour
 }
 
 func computePodResources(pod *api.Pod, node *api.Node) (page.Resources, error) {
-	req, limit, err := util.GetSinglePodTotalRequestsAndLimits(pod)
+	req, limit, err := kube.GetSinglePodTotalRequestsAndLimits(pod)
 	if err != nil {
 		return page.Resources{}, err
 	}
@@ -543,7 +543,7 @@ func genOnePod(pod *api.Pod) page.Pod {
 	for _, p := range strings.Split(portString, ",") {
 		ports = append(ports, strings.TrimSuffix(p, "/TCP"))
 	}
-	req, limit, _ := util.GetSinglePodTotalRequestsAndLimits(pod)
+	req, limit, _ := kube.GetSinglePodTotalRequestsAndLimits(pod)
 
 	return page.Pod{
 		Namespace:       pod.Namespace,
@@ -553,13 +553,13 @@ func genOnePod(pod *api.Pod) page.Pod {
 		ReadyContainers: readyContainers,
 		Status:          reason,
 		Restarts:        restarts,
-		Age:             util.TranslateTimestamp(pod.CreationTimestamp),
+		Age:             kube.TranslateTimestamp(pod.CreationTimestamp),
 		HostNetwork:     pod.Spec.HostNetwork,
 		HostIP:          pod.Spec.NodeName,
 		PodIP:           podIP,
 		Ports:           ports,
-		Requests:        util.TranslateResourseList(req),
-		Limits:          util.TranslateResourseList(limit),
+		Requests:        kube.TranslateResourseList(req),
+		Limits:          kube.TranslateResourseList(limit),
 	}
 }
 
@@ -593,16 +593,16 @@ func genOneNode(node *api.Node, allPods []*api.Pod) page.Node {
 		}
 	}
 
-	pods := util.FilterNodePods(allPods, node)
-	terminated, nonTerminated := util.FilterTerminatedPods(pods)
+	pods := kube.FilterNodePods(allPods, node)
+	terminated, nonTerminated := kube.FilterTerminatedPods(pods)
 	allocated, _ := computeNodeResources(nonTerminated, node)
 
 	return page.Node{
 		Name:               node.Name,
 		Status:             status,
-		Age:                util.TranslateTimestamp(node.CreationTimestamp),
+		Age:                kube.TranslateTimestamp(node.CreationTimestamp),
 		Labels:             labels,
-		Capacity:           util.TranslateResourseList(node.Status.Capacity),
+		Capacity:           kube.TranslateResourseList(node.Status.Capacity),
 		Pods:               pods,
 		TerminatedPods:     terminated,
 		NonTerminatedPods:  nonTerminated,
@@ -616,7 +616,7 @@ func genOneReplicationController(rc *api.ReplicationController) page.Replication
 		Name:            rc.Name,
 		DesiredReplicas: rc.Spec.Replicas,
 		CurrentReplicas: rc.Status.Replicas,
-		Age:             util.TranslateTimestamp(rc.CreationTimestamp),
+		Age:             kube.TranslateTimestamp(rc.CreationTimestamp),
 		Selector:        rc.Spec.Selector,
 	}
 	for k, v := range result.Selector {
@@ -644,13 +644,13 @@ func populatePodImages(containers []api.Container) (images []page.PodImage) {
 
 func genOneService(svc *api.Service) page.Service {
 	internalIP := svc.Spec.ClusterIP
-	externalIP := util.GetServiceExternalIP(svc)
+	externalIP := kube.GetServiceExternalIP(svc)
 	result := page.Service{
 		Name:       svc.Name,
 		InternalIP: internalIP,
 		ExternalIP: externalIP,
-		Ports:      util.MakePorts(svc.Spec.Ports),
-		Age:        util.TranslateTimestamp(svc.CreationTimestamp),
+		Ports:      kube.MakePorts(svc.Spec.Ports),
+		Age:        kube.TranslateTimestamp(svc.CreationTimestamp),
 		Selector:   svc.Spec.Selector,
 	}
 	for k, v := range result.Selector {
@@ -663,15 +663,15 @@ func genOneService(svc *api.Service) page.Service {
 func genOneEndpoint(ep *api.Endpoints) page.Endpoint {
 	return page.Endpoint{
 		Name:      ep.Name,
-		Age:       util.TranslateTimestamp(ep.CreationTimestamp),
-		Endpoints: util.FormatEndpoints(ep, nil),
+		Age:       kube.TranslateTimestamp(ep.CreationTimestamp),
+		Endpoints: kube.FormatEndpoints(ep, nil),
 	}
 }
 
 func genOneEvent(ev *api.Event) page.Event {
 	return page.Event{
-		FirstSeen:     util.TranslateTimestamp(ev.FirstTimestamp),
-		LastSeen:      util.TranslateTimestamp(ev.LastTimestamp),
+		FirstSeen:     kube.TranslateTimestamp(ev.FirstTimestamp),
+		LastSeen:      kube.TranslateTimestamp(ev.LastTimestamp),
 		Count:         ev.Count,
 		FromComponent: ev.Source.Component,
 		FromHost:      ev.Source.Host,
