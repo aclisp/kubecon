@@ -60,7 +60,7 @@ func main() {
 
 	r.GET("/help", help)
 
-	r.POST("/namespaces/:ns/pods.do", doPods)
+	r.POST("/namespaces/:ns/pods.form", showPodsForm)
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
 }
@@ -683,10 +683,13 @@ func genOneEvent(ev *api.Event) page.Event {
 	}
 }
 
-func doPods(c *gin.Context) {
+func showPodsForm(c *gin.Context) {
 	namespace := c.Param("ns")
 	action := c.PostForm("action")
-	object := c.PostForm("object")
+	pods := c.PostForm("pods")
+	image := c.PostForm("image")
 
-	c.String(http.StatusOK, fmt.Sprintf(" namespace: %s;\n action: %s;\n object: %s;\n ", namespace, action, object))
+	c.String(http.StatusOK, fmt.Sprintf(
+		" namespace: %s;\n action: %s;\n pods: %s;\n image: %s;\n ",
+		namespace, action, pods, image))
 }

@@ -5,12 +5,18 @@
     <h1 class="page-header">容器管理</h1>
 
     <p>
-        <button type="button" id="upgrade" name="action" disabled="disabled" class="btn btn-sm btn-warning">升级</button>
-        <button type="button" name="action" disabled="disabled" class="btn btn-sm btn-success">回滚</button>
-        <button type="button" name="action" disabled="disabled" class="btn btn-sm btn-info">启动</button>
-        <button type="button" name="action" disabled="disabled" class="btn btn-sm btn-primary">重启</button>
-        <button type="button" name="action" disabled="disabled" class="btn btn-sm btn-default">停止</button>
-        <button type="button" name="action" disabled="disabled" class="btn btn-sm btn-danger">卸载</button>
+    <div class="btn-group btn-group-sm">
+        <button type="button" onclick="getForm(this)" id="upgrade" name="imageAction" disabled="disabled" class="btn btn-warning">升级</button>
+        <button type="button" onclick="getForm(this)" id="downgrade" name="imageAction" disabled="disabled" class="btn btn-success">回滚</button>
+    </div>
+    <div class="btn-group btn-group-sm">
+        <button type="button" onclick="getForm(this)" id="start" name="instanceAction" disabled="disabled" class="btn btn-info">启动</button>
+        <button type="button" onclick="getForm(this)" id="restart" name="instanceAction" disabled="disabled" class="btn btn-primary">重启</button>
+        <button type="button" onclick="getForm(this)" id="stop" name="instanceAction" disabled="disabled" class="btn btn-default">停止</button>
+    </div>
+    <div class="btn-group btn-group-sm">
+        <button type="button" onclick="getForm(this)" id="delete" name="instanceAction" disabled="disabled" class="btn btn-danger">卸载</button>
+    </div>
     </p>
 
 <table class="table table-condensed table-striped">
@@ -119,6 +125,7 @@
 
 <script src="/js/page.js"></script>
 <script>
+// Controlling the filters
 var imageFilter = document.getElementById('imageFilter');
 var statusFilter = document.getElementById('statusFilter');
 var hostFilter = document.getElementById('hostFilter');
@@ -149,25 +156,31 @@ hostFilter.onchange = function() {
     };
     location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
 };
-
+// Set checks, enables and disables
+function enableActionButton(enable) {
+    $("button[name='instanceAction']").prop('disabled', !enable);
+    if (imageFilter.selectedIndex > 0) {
+        $("button[name='imageAction']").prop('disabled', !enable);
+    }
+}
 function toggleAll(source) {
     var checkboxes = document.getElementsByName('checkpod');
     for(var i=0, n=checkboxes.length; i<n; i++) {
         checkboxes[i].checked = source.checked;
     }
     if (checkboxes.length > 0) {
-        $("button[name='action']").prop('disabled', !source.checked);
+        enableActionButton(source.checked);
     }
 }
 function toggle1(source) {
     var checkboxes = document.getElementsByName('checkpod');
     for(var i=0, n=checkboxes.length; i<n; i++) {
         if (checkboxes[i].checked) {
-            $("button[name='action']").prop('disabled', false);
+            enableActionButton(true);
             return;
         }
     }
-    $("button[name='action']").prop('disabled', true);
+    enableActionButton(false);
 }
 function toggle2(source) {
     var checkboxes = document.getElementsByName('checkpod');
@@ -179,9 +192,8 @@ function toggle2(source) {
     }
     document.getElementById('checkall').checked = true;
 }
-
-var upgradeButton = document.getElementById('upgrade');
-upgradeButton.onclick = function() {
+// Go to forms
+function getForm(source) {
     var checkboxes = document.getElementsByName('checkpod');
     var pods = [];
     for(var i=0, n=checkboxes.length; i<n; i++) {
@@ -189,8 +201,12 @@ upgradeButton.onclick = function() {
             pods.push(checkboxes[i].id);
         }
     }
-    post('/namespaces/{{.namespace}}/pods.do', {action: 'upgrade', object: JSON.stringify(pods)});
-};
+    post('/namespaces/{{.namespace}}/pods.form', {
+        action: source.id,
+        pods: JSON.stringify(pods),
+        image: imageFilter.options[imageFilter.selectedIndex].value,
+    });
+}
 </script>
 
 {{template "footer" .}}
