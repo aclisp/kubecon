@@ -124,74 +124,74 @@ var imageFilter = document.getElementById('imageFilter');
 var statusFilter = document.getElementById('statusFilter');
 var hostFilter = document.getElementById('hostFilter');
 imageFilter.onchange = function() {
-  var queries = {
-    labelSelector: {{.queries.labelSelector}},
-    image: this.options[this.selectedIndex].value,
-    status: {{.queries.status}},
-    host: {{.queries.host}},
-  }
-  location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
-}
+    var queries = {
+        labelSelector: "{{.queries.labelSelector}}",
+        image: this.options[this.selectedIndex].value,
+        status: "{{.queries.status}}",
+        host: "{{.queries.host}}",
+    };
+    location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
+};
 statusFilter.onchange = function() {
-  var queries = {
-    labelSelector: {{.queries.labelSelector}},
-    image: {{.queries.image}},
-    status: this.options[this.selectedIndex].value,
-    host: {{.queries.host}},
-  }
-  location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
-}
+    var queries = {
+        labelSelector: "{{.queries.labelSelector}}",
+        image: "{{.queries.image}}",
+        status: this.options[this.selectedIndex].value,
+        host: "{{.queries.host}}",
+    };
+    location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
+};
 hostFilter.onchange = function() {
-  var queries = {
-    labelSelector: {{.queries.labelSelector}},
-    image: {{.queries.image}},
-    status: {{.queries.status}},
-    host: this.options[this.selectedIndex].value,
-  }
-  location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
-}
+    var queries = {
+        labelSelector: "{{.queries.labelSelector}}",
+        image: "{{.queries.image}}",
+        status: "{{.queries.status}}",
+        host: this.options[this.selectedIndex].value,
+    };
+    location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
+};
 
 function toggleAll(source) {
-  var checkboxes = document.getElementsByName('checkpod');
-  for(var i=0, n=checkboxes.length; i<n; i++) {
-    checkboxes[i].checked = source.checked;
-  }
-  if (checkboxes.length > 0) {
-    $("button[name='action']").prop('disabled', !source.checked);
-  }
+    var checkboxes = document.getElementsByName('checkpod');
+    for(var i=0, n=checkboxes.length; i<n; i++) {
+        checkboxes[i].checked = source.checked;
+    }
+    if (checkboxes.length > 0) {
+        $("button[name='action']").prop('disabled', !source.checked);
+    }
 }
 function toggle1(source) {
-  var checkboxes = document.getElementsByName('checkpod');
-  for(var i=0, n=checkboxes.length; i<n; i++) {
-    if (checkboxes[i].checked) {
-      $("button[name='action']").prop('disabled', false);
-      return;
+    var checkboxes = document.getElementsByName('checkpod');
+    for(var i=0, n=checkboxes.length; i<n; i++) {
+        if (checkboxes[i].checked) {
+            $("button[name='action']").prop('disabled', false);
+            return;
+        }
     }
-  }
-  $("button[name='action']").prop('disabled', true);
+    $("button[name='action']").prop('disabled', true);
 }
 function toggle2(source) {
-  var checkboxes = document.getElementsByName('checkpod');
-  for(var i=0, n=checkboxes.length; i<n; i++) {
-    if (!checkboxes[i].checked) {
-      document.getElementById('checkall').checked = false;
-      return;
+    var checkboxes = document.getElementsByName('checkpod');
+    for(var i=0, n=checkboxes.length; i<n; i++) {
+        if (!checkboxes[i].checked) {
+            document.getElementById('checkall').checked = false;
+            return;
+        }
     }
-  }
-  document.getElementById('checkall').checked = true;
+    document.getElementById('checkall').checked = true;
 }
 
 var upgradeButton = document.getElementById('upgrade');
 upgradeButton.onclick = function() {
-  var checkboxes = document.getElementsByName('checkpod');
-  var pods = [];
-  for(var i=0, n=checkboxes.length; i<n; i++) {
-    if (checkboxes[i].checked) {
-      pods.push(checkboxes[i].id);
+    var checkboxes = document.getElementsByName('checkpod');
+    var pods = [];
+    for(var i=0, n=checkboxes.length; i<n; i++) {
+        if (checkboxes[i].checked) {
+            pods.push(checkboxes[i].id);
+        }
     }
-  }
-  post('/namespaces/{{.namespace}}/pods.do', {action: 'upgrade', object: JSON.stringify(pods)});
-}
+    post('/namespaces/{{.namespace}}/pods.do', {action: 'upgrade', object: JSON.stringify(pods)});
+};
 </script>
 
 {{template "footer" .}}
