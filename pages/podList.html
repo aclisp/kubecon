@@ -71,13 +71,13 @@
             <td>
                 <a href="/namespaces/{{.Namespace}}/pods/{{.Name}}">{{.Name}}</a>
             </td>
-            <td>
+            <td class="images">
                 {{range .Images}}
                 <span class="glyphicon glyphicon-cd"></span>
                 {{if .PrivateRepo }}
-                    {{.Image}}
+                    <span class="image">{{.Image}}</span>
                 {{else}}
-                    <span class="text-danger" title="来自 Docker Hub">{{.Image}}</span>
+                    <span class="image text-danger" title="来自 Docker Hub">{{.Image}}</span>
                 {{end}}
                 <br/>
                 {{end}}
@@ -197,14 +197,25 @@ function getForm(source) {
     var checkboxes = document.getElementsByName('checkpod');
     var pods = [];
     for(var i=0, n=checkboxes.length; i<n; i++) {
-        if (checkboxes[i].checked) {
-            pods.push(checkboxes[i].id);
+        var checkbox = checkboxes[i];
+        if (checkbox.checked) {
+            var currentRow = checkbox.parentNode.parentNode;
+            var imagesColumn = currentRow.getElementsByClassName('images')[0];
+            var imagesSpan = imagesColumn.getElementsByClassName('image');
+            var images = [];
+            for(var j=0, m=imagesSpan.length; j<m; j++) {
+                images.push(imagesSpan[j].textContent);
+            }
+            pods.push({
+                name: checkbox.id,
+                images: images,
+            });
         }
     }
     post('/namespaces/{{.namespace}}/pods.form', {
         action: source.id,
         pods: JSON.stringify(pods),
-        image: imageFilter.options[imageFilter.selectedIndex].value,
+        selectedImage: imageFilter.options[imageFilter.selectedIndex].value,
     });
 }
 </script>

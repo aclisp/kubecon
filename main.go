@@ -687,9 +687,16 @@ func showPodsForm(c *gin.Context) {
 	namespace := c.Param("ns")
 	action := c.PostForm("action")
 	pods := c.PostForm("pods")
-	image := c.PostForm("image")
+	selectedImage := c.PostForm("selectedImage")
+
+	var out bytes.Buffer
+	err := json.Indent(&out, []byte(pods), "", "  ")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
 
 	c.String(http.StatusOK, fmt.Sprintf(
-		" namespace: %s;\n action: %s;\n pods: %s;\n image: %s;\n ",
-		namespace, action, pods, image))
+		" namespace: %s;\n action: %s;\n pods: %s;\n selectedImage: %s;\n ",
+		namespace, action, out.String(), selectedImage))
 }
