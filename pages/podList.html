@@ -14,9 +14,9 @@
         <button type="button" onclick="getForm(this)" id="restart" name="instanceAction" disabled="disabled" class="btn btn-primary">重启</button>
         <button type="button" onclick="getForm(this)" id="stop" name="instanceAction" disabled="disabled" class="btn btn-default">停止</button>
     </div>
-    <div class="btn-group btn-group-sm">
+    <!--div class="btn-group btn-group-sm">
         <button type="button" onclick="getForm(this)" id="delete" name="instanceAction" disabled="disabled" class="btn btn-danger">卸载</button>
-    </div>
+    </div-->
     </p>
 
 <table class="table table-condensed table-striped">
@@ -67,7 +67,7 @@
         </tr>
         {{range .pods}}
         <tr>
-            <td><input type="checkbox" id="{{.Name}}" name="checkpod" onclick="toggle1(this); toggle2(this)"></td>
+            <td><input type="checkbox" id="{{.Name}}" name="checkpod" onclick="toggle1(); toggle2()"></td>
             <td>
                 <a href="/namespaces/{{.Namespace}}/pods/{{.Name}}">{{.Name}}</a>
             </td>
@@ -156,6 +156,12 @@ hostFilter.onchange = function() {
     };
     location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
 };
+// Handle browser `Back`
+$(document).ready(function() {
+    // executes when HTML-Document is loaded and DOM is ready
+    toggle1();
+    toggle2();
+});
 // Set checks, enables and disables
 function enableActionButton(enable) {
     $("button[name='instanceAction']").prop('disabled', !enable);
@@ -172,7 +178,7 @@ function toggleAll(source) {
         enableActionButton(source.checked);
     }
 }
-function toggle1(source) {
+function toggle1() {
     var checkboxes = document.getElementsByName('checkpod');
     for(var i=0, n=checkboxes.length; i<n; i++) {
         if (checkboxes[i].checked) {
@@ -182,7 +188,7 @@ function toggle1(source) {
     }
     enableActionButton(false);
 }
-function toggle2(source) {
+function toggle2() {
     var checkboxes = document.getElementsByName('checkpod');
     for(var i=0, n=checkboxes.length; i<n; i++) {
         if (!checkboxes[i].checked) {
@@ -215,7 +221,7 @@ function getForm(source) {
     post('/namespaces/{{.namespace}}/pods.form', {
         action: source.id,
         pods: JSON.stringify(pods),
-        selectedImage: imageFilter.options[imageFilter.selectedIndex].value,
+        location: location.href,
     });
 }
 </script>

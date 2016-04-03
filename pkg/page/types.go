@@ -116,3 +116,13 @@ type Endpoint struct {
 	Age       string
 	Endpoints string
 }
+
+type SimplePod struct {
+	Name   string   `json:"name,omitempty"`
+	Images []string `json:"images,omitempty"`
+}
+
+type SimpleImage struct {
+	Name string
+	Tags []string
+}

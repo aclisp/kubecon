@@ -16,6 +16,7 @@ import (
 	"github.com/aclisp/kubecon/pkg/kube"
 	"github.com/aclisp/kubecon/pkg/kubeclient"
 	"github.com/aclisp/kubecon/pkg/page"
+	"github.com/blang/semver"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 
@@ -28,6 +29,7 @@ import (
 
 const (
 	PrivateRepoPrefix = "61.160.36.122:8080/"
+	PauseImage        = "sigmas/pause:0.8.0"
 )
 
 var (
@@ -47,6 +49,7 @@ func main() {
 	r.Static("/js", "js")
 	r.Static("/css", "css")
 	r.Static("/fonts", "fonts")
+	r.Static("/img", "img")
 	r.LoadHTMLGlob("pages/*.html")
 
 	r.GET("/", index)
@@ -61,6 +64,7 @@ func main() {
 	r.GET("/help", help)
 
 	r.POST("/namespaces/:ns/pods.form", showPodsForm)
+	r.POST("/namespaces/:ns/pods.action", performPodsAction)
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
 }
@@ -516,6 +520,9 @@ func genOnePod(pod *api.Pod) page.Pod {
 			}
 		} else if container.Ready && container.State.Running != nil {
 			readyContainers++
+			if container.Image == PauseImage {
+				reason = "Stopped"
+			}
 		}
 	}
 	if pod.DeletionTimestamp != nil {
@@ -686,17 +693,254 @@ func genOneEvent(ev *api.Event) page.Event {
 func showPodsForm(c *gin.Context) {
 	namespace := c.Param("ns")
 	action := c.PostForm("action")
-	pods := c.PostForm("pods")
-	selectedImage := c.PostForm("selectedImage")
+	podsJson := c.PostForm("pods")
+	location := c.PostForm("location")
 
-	var out bytes.Buffer
-	err := json.Indent(&out, []byte(pods), "", "  ")
+	var pods []page.SimplePod
+	err := json.Unmarshal([]byte(podsJson), &pods)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
 
-	c.String(http.StatusOK, fmt.Sprintf(
-		" namespace: %s;\n action: %s;\n pods: %s;\n selectedImage: %s;\n ",
-		namespace, action, out.String(), selectedImage))
+	var images []page.SimpleImage
+	for i, image := range pods[0].Images {
+		if i > 1 {
+			break
+		}
+		splits := strings.SplitN(image, ":", 2)
+		name := splits[0]
+		tag := "latest"
+		if len(splits) > 1 {
+			tag = splits[1]
+		}
+		tagList := getImageTags(name)
+		semver.Sort(tagList)
+		switch action {
+		case "upgrade":
+			index := search(tagList, tag)
+			tagList = tagList[index+1:]
+		case "downgrade":
+			index := search(tagList, tag)
+			if index == -1 {
+				index = len(tagList)
+			}
+			tagList = tagList[:index]
+			reverse(tagList)
+		default:
+			tagList = nil
+		}
+		tagList = limit(tagList, 10)
+		images = append(images, page.SimpleImage{
+			Name: name,
+			Tags: versionsToStrings(tagList),
+		})
+	}
+
+	c.HTML(http.StatusOK, "podForm", gin.H{
+		"title":     action,
+		"action":    action,
+		"namespace": namespace,
+		"pods":      pods,
+		"location":  location,
+		"images":    images,
+	})
+}
+
+type TagList struct {
+	Name string   `json:"name,omitempty"`
+	Tags []string `json:"tags,omitempty"`
+}
+
+func getImageTags(name string) (tags []semver.Version) {
+	url := "http://" + PrivateRepoPrefix + "v2/" + name + "/tags/list"
+	res, err := http.Get(url)
+	if err != nil {
+		panic(err)
+	}
+	defer res.Body.Close()
+
+	var data TagList
+	decoder := json.NewDecoder(res.Body)
+	err = decoder.Decode(&data)
+	if err != nil {
+		panic(err)
+	}
+	for _, t := range data.Tags {
+		v, err := semver.Parse(t)
+		if err != nil {
+			continue
+		}
+		tags = append(tags, v)
+	}
+	return
+}
+
+func search(items []semver.Version, one string) int {
+	for i := range items {
+		if items[i].String() == one {
+			return i
+		}
+	}
+	return -1
+}
+
+func reverse(items []semver.Version) {
+	for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
+		items[i], items[j] = items[j], items[i]
+	}
+}
+
+func limit(items []semver.Version, max int) []semver.Version {
+	if len(items) > max {
+		return items[:max]
+	} else {
+		return items
+	}
+}
+
+func versionsToStrings(items []semver.Version) (result []string) {
+	for i := range items {
+		result = append(result, items[i].String())
+	}
+	return
+}
+
+func performPodsAction(c *gin.Context) {
+	namespace := c.Param("ns")
+	action := c.PostForm("action")
+	podsJson := c.PostForm("pods")
+	imagesJson := c.PostForm("images")
+	location := c.PostForm("location")
+
+	var pods []string
+	var images []string
+	if err := json.Unmarshal([]byte(podsJson), &pods); err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	if err := json.Unmarshal([]byte(imagesJson), &images); err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	var fullImages []string
+	for _, image := range images {
+		if image == "" {
+			fullImages = append(fullImages, "")
+		} else {
+			fullImages = append(fullImages, PrivateRepoPrefix+image)
+		}
+	}
+
+	var errs []error
+	switch action {
+	case "upgrade", "downgrade":
+		for _, podname := range pods {
+			if err := setPodImage(namespace, podname, fullImages); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	case "start":
+		for _, podname := range pods {
+			if err := startPod(namespace, podname); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	case "stop":
+		for _, podname := range pods {
+			if err := stopPod(namespace, podname); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	case "restart":
+		for _, podname := range pods {
+			if err := stopPod(namespace, podname); err != nil {
+				errs = append(errs, err)
+			}
+			if err := startPod(namespace, podname); err != nil {
+				errs = append(errs, err)
+			}
+		}
+	case "delete":
+	}
+
+	if len(errs) > 0 {
+		var errors []string
+		for _, e := range errs {
+			errors = append(errors, e.Error())
+		}
+		c.HTML(http.StatusInternalServerError, "errors", gin.H{"errors": errors})
+	} else {
+		re := regexp.MustCompile("status=([^&]+)")
+		//glog.Infof("Redirect to location: %q", location)
+		location = re.ReplaceAllString(location, "status=")
+		re = regexp.MustCompile("image=([^&]+)")
+		location = re.ReplaceAllString(location, "image=")
+		c.Redirect(http.StatusMovedPermanently, location)
+	}
+	//c.String(http.StatusOK, "%#v, %#v, %#v, %#v", namespace, action, pods, images)
+}
+
+func setPodImage(namespace string, podname string, fullImages []string) error {
+	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
+	if err != nil {
+		//glog.Errorf("Unable to set image of '%s/%s': kube get: %v", namespace, podname, err)
+		return err
+	}
+
+	for i, image := range fullImages {
+		if image == "" {
+			continue
+		}
+		glog.Infof("Set image of '%s/%s/%d': %s -> %s", namespace, podname, i, pod.Spec.Containers[i].Image, image)
+		pod.Spec.Containers[i].Image = image
+	}
+	_, err = kubeclient.Get().Pods(namespace).Update(pod)
+	if err != nil {
+		//glog.Errorf("Unable to set image of '%s/%s': kube update: %v", namespace, podname, err)
+		return err
+	}
+	return nil
+}
+
+func stopPod(namespace string, podname string) error {
+	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
+	if err != nil {
+		//glog.Errorf("Unable to stop '%s/%s': kube get: %v", namespace, podname, err)
+		return err
+	}
+	if pod.Spec.Containers[0].Image == PauseImage {
+		// Already stopped.
+		return nil
+	}
+
+	pod.Annotations["paused"] = pod.Spec.Containers[0].Image
+	pod.Spec.Containers[0].Image = PauseImage
+	_, err = kubeclient.Get().Pods(namespace).Update(pod)
+	if err != nil {
+		//glog.Errorf("Unable to stop '%s/%s': kube update: %v", namespace, podname, err)
+		return err
+	}
+	return nil
+}
+
+func startPod(namespace string, podname string) error {
+	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
+	if err != nil {
+		//glog.Errorf("Unable to start '%s/%s': kube get: %v", namespace, podname, err)
+		return err
+	}
+	if pod.Spec.Containers[0].Image != PauseImage {
+		// Already started.
+		return nil
+	}
+
+	pod.Spec.Containers[0].Image = pod.Annotations["paused"]
+	delete(pod.Annotations, "paused")
+	_, err = kubeclient.Get().Pods(namespace).Update(pod)
+	if err != nil {
+		//glog.Errorf("Unable to start '%s/%s': kube update: %v", namespace, podname, err)
+		return err
+	}
+	return nil
 }

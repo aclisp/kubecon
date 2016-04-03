@@ -1,0 +1,99 @@
+{{define "podForm"}}
+{{template "header" .}}
+
+<div class="main">
+    <h1 class="page-header">{{.action}} for {{.namespace}}</h1>
+
+<table class="table table-condensed table-striped">
+    <caption>记录数 <span class="badge">{{len .pods}}</span> 个</caption>
+    <thead>
+        <tr>
+            <th>实例名</th>
+            <th>镜像1</th>
+            <th>镜像2</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{range .pods}}
+        <tr>
+            <td class="podname">{{.Name}}</td>
+            {{range .Images}}
+            <td>{{.}}</td>
+            {{end}}
+        </tr>
+        {{end}}
+        <tr>
+            <th></th>
+            {{range $image := .images}}
+            <th>
+            {{with $image.Tags}}
+            版本改变为
+            <select class="podimage">
+                <option value="">请选择</option>
+                {{range $image.Tags}}
+                <option value="{{$image.Name}}:{{.}}">{{.}}</option>
+                {{end}}
+            </select>
+            {{end}}
+            </th>
+            {{end}}
+        </tr>
+    </tbody>
+</table>
+
+<p>
+    <button type="button" onclick="submit(this)" id="submit" class="btn btn-primary">提交</button>
+    <span id="loading" style="display: none;"><img src="/img/loading.gif" alt="Loading"></span>
+</p>
+
+</div>
+
+<script src="/js/page.js"></script>
+<script>
+$(document).ready(function() {
+    var action = "{{.action}}";
+    if (action == "upgrade" || action == "downgrade") {
+        var selects = document.getElementsByClassName('podimage');
+        if (selects.length === 0) {
+            $("#submit").prop('disabled', true);
+        }
+    }
+});
+function submit(source) {
+    var action = "{{.action}}";
+    var images = [];
+    var selects = document.getElementsByClassName('podimage');
+    for(var i=0, n=selects.length; i<n; i++) {
+        var select = selects[i];
+        var image = select.options[select.selectedIndex].value;
+        images.push(image);
+    }
+    var pods = [];
+    var columns = document.getElementsByClassName('podname');
+    for(var j=0, m=columns.length; j<m; j++) {
+        var column = columns[j];
+        var pod = column.textContent;
+        pods.push(pod);
+    }
+    if (action == "upgrade" || action == "downgrade") {
+        var sum = 0;
+        for (var h=0, l=images.length; h<l; h++) {
+            sum += images[h].length;
+        }
+        if (sum === 0) {
+            alert('请选择目标版本！');
+            return;
+        }
+    }
+    $('#loading').show();
+    post('/namespaces/{{.namespace}}/pods.action', {
+        action: action,
+        pods: JSON.stringify(pods),
+        images: JSON.stringify(images),
+        location: "{{.location}}",
+    });
+}
+</script>
+
+{{template "footer" .}}
+{{end}}
