@@ -21,6 +21,7 @@ import (
 	"github.com/golang/glog"
 
 	"k8s.io/kubernetes/pkg/api"
+	"k8s.io/kubernetes/pkg/api/unversioned"
 	"k8s.io/kubernetes/pkg/fields"
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/labels"
@@ -497,6 +498,7 @@ func genEndpoints(list *api.EndpointsList) (eps []page.Endpoint) {
 }
 
 func genOnePod(pod *api.Pod) page.Pod {
+	var containerAge unversioned.Time
 	restarts := 0
 	totalContainers := len(pod.Spec.Containers)
 	readyContainers := 0
@@ -520,6 +522,9 @@ func genOnePod(pod *api.Pod) page.Pod {
 			}
 		} else if container.Ready && container.State.Running != nil {
 			readyContainers++
+			if containerAge.Before(container.State.Running.StartedAt) {
+				containerAge = container.State.Running.StartedAt
+			}
 			if container.Image == PauseImage {
 				reason = "Stopped"
 			}
@@ -561,6 +566,7 @@ func genOnePod(pod *api.Pod) page.Pod {
 		Status:          reason,
 		Restarts:        restarts,
 		Age:             kube.TranslateTimestamp(pod.CreationTimestamp),
+		ContainerAge:    kube.TranslateTimestamp(containerAge),
 		HostNetwork:     pod.Spec.HostNetwork,
 		HostIP:          pod.Spec.NodeName,
 		PodIP:           podIP,

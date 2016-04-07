@@ -59,6 +59,7 @@ type Pod struct {
 	Status          string
 	Restarts        int
 	Age             string
+	ContainerAge    string
 	HostNetwork     bool
 	HostIP          string
 	PodIP           string
