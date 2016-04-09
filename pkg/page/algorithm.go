@@ -4,15 +4,21 @@ import (
 	"sort"
 )
 
-// ByAge implements sort.Interface for []Person based on
-// the Age field.
+// ByBirth implements sort.Interface for []Pod based on the ContainerBirth field.
+type ByBirth []Pod
+
+func (a ByBirth) Len() int           { return len(a) }
+func (a ByBirth) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByBirth) Less(i, j int) bool { return a[i].ContainerBirth.Before(a[j].ContainerBirth) }
+
+// ByName implements sort.Interface for []PodImage based on the Image field.
 type ByName []PodImage
 
 func (a ByName) Len() int           { return len(a) }
 func (a ByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByName) Less(i, j int) bool { return a[i].Image < a[j].Image }
 
-func FoldPods(pods []Pod) (images []PodImage, statuses []string, hosts []string) {
+func GetPodsFilters(pods []Pod) (images []PodImage, statuses []string, hosts []string) {
 	imageSet := make(map[PodImage]bool)
 	statusSet := make(map[string]bool)
 	hostSet := make(map[string]bool)

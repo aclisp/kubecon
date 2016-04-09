@@ -363,7 +363,7 @@ func listPodsInNamespace(c *gin.Context) {
 	}
 
 	pods := genPods(list)
-	images, statuses, hosts := page.FoldPods(pods)
+	images, statuses, hosts := page.GetPodsFilters(pods)
 
 	image, ok := c.GetQuery("image")
 	if ok && len(image) > 0 {
@@ -380,6 +380,8 @@ func listPodsInNamespace(c *gin.Context) {
 	if ok && len(host) > 0 {
 		pods = page.FilterPodsByHost(pods, host)
 	}
+
+	sort.Sort(sort.Reverse(page.ByBirth(pods)))
 
 	c.HTML(http.StatusOK, "podList", gin.H{
 		"title":     "Sigma Pods",
@@ -498,7 +500,7 @@ func genEndpoints(list *api.EndpointsList) (eps []page.Endpoint) {
 }
 
 func genOnePod(pod *api.Pod) page.Pod {
-	var containerAge unversioned.Time
+	var containerBirth unversioned.Time
 	restarts := 0
 	totalContainers := len(pod.Spec.Containers)
 	readyContainers := 0
@@ -522,8 +524,8 @@ func genOnePod(pod *api.Pod) page.Pod {
 			}
 		} else if container.Ready && container.State.Running != nil {
 			readyContainers++
-			if containerAge.Before(container.State.Running.StartedAt) {
-				containerAge = container.State.Running.StartedAt
+			if containerBirth.Before(container.State.Running.StartedAt) {
+				containerBirth = container.State.Running.StartedAt
 			}
 			if container.Image == PauseImage {
 				reason = "Stopped"
@@ -566,7 +568,8 @@ func genOnePod(pod *api.Pod) page.Pod {
 		Status:          reason,
 		Restarts:        restarts,
 		Age:             kube.TranslateTimestamp(pod.CreationTimestamp),
-		ContainerAge:    kube.TranslateTimestamp(containerAge),
+		ContainerAge:    kube.TranslateTimestamp(containerBirth),
+		ContainerBirth:  containerBirth.Time,
 		HostNetwork:     pod.Spec.HostNetwork,
 		HostIP:          pod.Spec.NodeName,
 		PodIP:           podIP,

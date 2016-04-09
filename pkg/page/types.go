@@ -1,6 +1,8 @@
 package page
 
 import (
+	"time"
+
 	"k8s.io/kubernetes/pkg/api"
 )
 
@@ -60,6 +62,7 @@ type Pod struct {
 	Restarts        int
 	Age             string
 	ContainerAge    string
+	ContainerBirth  time.Time
 	HostNetwork     bool
 	HostIP          string
 	PodIP           string
