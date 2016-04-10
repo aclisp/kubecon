@@ -14,6 +14,7 @@
         <th>当前副本数</th>
         <th>存活</th>
         <th>选取规则</th>
+        <th>操作</th>
     </tr>
     </thead>
     <tbody>
@@ -40,6 +41,9 @@
         <td>{{.Age}}</td>
         <td>{{range $k, $v := .Selector}}
             <span class="label label-default">{{printf "%s=%s" $k $v}}</span>{{end}}
+        </td>
+        <td>
+            <a href="/namespaces/{{$.ns}}/replicationcontrollers/{{.Name}}/edit"><span class="glyphicon glyphicon-edit"></span></a>
         </td>
     </tr>
     {{end}}

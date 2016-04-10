@@ -1,0 +1,40 @@
+{{define "replicationControllerEdit"}}
+{{template "header" .}}
+
+<script src="/js/jsoneditor.min.js"></script>
+
+<div class="main">
+    <h1 class="page-header">{{.objname}}</h1>
+
+    <div class="btn-group" role="group">
+        <button type="button" onclick="submit()" id="submit" class="btn btn-warning">提交更改</button>
+    </div>
+
+    <div id="jsoneditor" style="width: 100%; height: 500px;"></div>
+
+</div>
+
+<script src="/js/page.js"></script>
+<script>
+// create the editor
+var container = document.getElementById('jsoneditor');
+var options = {
+    modes: ["tree", "code"],
+    mode: "tree",
+    onError: function (err) {
+        alert(err.toString());
+    },
+};
+var object = JSON.parse("{{.json}}");
+var editor = new JSONEditor(container, options, object);
+// submit button
+function submit() {
+    var object = editor.get();
+    post('/namespaces/{{.namespace}}/replicationcontrollers/{{.objname}}/update', {
+        json: JSON.stringify(object),
+    });
+}
+</script>
+
+{{template "footer" .}}
+{{end}}

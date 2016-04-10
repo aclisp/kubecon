@@ -1,0 +1,58 @@
+{{define "podEdit"}}
+{{template "header" .}}
+
+<script src="/js/jsoneditor.min.js"></script>
+
+<div class="main">
+    <h1 class="page-header">{{.pod}}</h1>
+
+    <div class="btn-group" role="group">
+        <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}" role="button">容器描述</a>
+        <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}/log" role="button">当前日志</a>
+        <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}/log?previous" role="button">上次日志</a>
+        <a class="btn btn-default active" href="/namespaces/{{.namespace}}/pods/{{.pod}}/edit" role="button">编辑描述</a>
+        <button type="button" onclick="submit()" id="submit" class="btn btn-warning">提交更改</button>
+        <button type="button" onclick="exportTemplate()" id="sync" class="btn btn-info" title="以此容器为模板更新副本控制器"><span class="glyphicon glyphicon-export"></span>导出副本</button>
+        <button type="button" onclick="importTemplate()" id="sync" class="btn btn-warning" title="以副本控制器的模板更新此容器"><span class="glyphicon glyphicon-import"></span>导入副本</button>
+    </div>
+
+    <div id="jsoneditor" style="width: 100%; height: 500px;"></div>
+
+</div>
+
+<script src="/js/page.js"></script>
+<script>
+// create the editor
+var container = document.getElementById('jsoneditor');
+var options = {
+    modes: ["tree", "code"],
+    mode: "tree",
+    onError: function (err) {
+        alert(err.toString());
+    },
+};
+var object = JSON.parse("{{.json}}");
+var editor = new JSONEditor(container, options, object);
+// submit button
+function submit() {
+    var object = editor.get();
+    post('/namespaces/{{.namespace}}/pods/{{.pod}}/update', {
+        json: JSON.stringify(object),
+    });
+}
+// exportTemplate button
+function exportTemplate() {
+    var object = editor.get();
+    post('/namespaces/{{.namespace}}/pods/{{.pod}}/export', {
+        json: JSON.stringify(object),
+    });
+}
+// importTemplate button
+function importTemplate() {
+    post('/namespaces/{{.namespace}}/pods/{{.pod}}/import', {
+    });
+}
+</script>
+
+{{template "footer" .}}
+{{end}}

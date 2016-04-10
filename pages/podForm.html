@@ -42,7 +42,7 @@
 </table>
 
 <p>
-    <button type="button" onclick="submit(this)" id="submit" class="btn btn-primary">提交</button>
+    <button type="button" onclick="submit()" id="submit" class="btn btn-primary">提交</button>
     <span id="loading" style="display: none;"><img src="/img/loading.gif" alt="Loading"></span>
 </p>
 
@@ -59,7 +59,7 @@ $(document).ready(function() {
         }
     }
 });
-function submit(source) {
+function submit() {
     var action = "{{.action}}";
     var images = [];
     var selects = document.getElementsByClassName('podimage');

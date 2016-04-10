@@ -58,6 +58,8 @@ func main() {
 	r.GET("/namespaces/:ns/pods", listPodsInNamespace)
 	r.GET("/namespaces/:ns/pods/:po", describePod)
 	r.GET("/namespaces/:ns/pods/:po/log", readPodLog)
+	r.GET("/namespaces/:ns/pods/:po/edit", editPod)
+	r.GET("/namespaces/:ns/replicationcontrollers/:rc/edit", editReplicationController)
 	r.GET("/namespaces/:ns/events", listEventsInNamespace)
 	r.GET("/nodes", listNodes)
 	r.GET("/nodes/:no", describeNode)
@@ -66,8 +68,74 @@ func main() {
 
 	r.POST("/namespaces/:ns/pods.form", showPodsForm)
 	r.POST("/namespaces/:ns/pods.action", performPodsAction)
+	r.POST("/namespaces/:ns/pods/:po/update", updatePod)
+	r.POST("/namespaces/:ns/pods/:po/export", updateReplicationControllerWithPod)
+	r.POST("/namespaces/:ns/pods/:po/import", updatePodWithReplicationController)
+	r.POST("/namespaces/:ns/replicationcontrollers/:rc/update", updateReplicationController)
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
+}
+
+func editReplicationController(c *gin.Context) {
+	namespace := c.Param("ns")
+	rcname := c.Param("rc")
+
+	rc, err := kubeclient.Get().ReplicationControllers(namespace).Get(rcname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	b, err := json.Marshal(rc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "  ")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.HTML(http.StatusOK, "replicationControllerEdit", gin.H{
+		"title":     rcname,
+		"namespace": namespace,
+		"objname":   rcname,
+		"json":      out.String(),
+	})
+}
+
+func editPod(c *gin.Context) {
+	namespace := c.Param("ns")
+	podname := c.Param("po")
+
+	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	b, err := json.Marshal(pod)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "  ")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.HTML(http.StatusOK, "podEdit", gin.H{
+		"title":     podname,
+		"namespace": namespace,
+		"pod":       podname,
+		"json":      out.String(),
+	})
 }
 
 func readPodLog(c *gin.Context) {
@@ -952,4 +1020,109 @@ func startPod(namespace string, podname string) error {
 		return err
 	}
 	return nil
+}
+
+func updatePod(c *gin.Context) {
+	namespace := c.Param("ns")
+	podname := c.Param("po")
+	podjson := c.PostForm("json")
+
+	var pod api.Pod
+	err := json.Unmarshal([]byte(podjson), &pod)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = kubeclient.Get().Pods(namespace).Update(&pod)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s/pods/%s/edit", namespace, podname))
+}
+
+func updateReplicationControllerWithPod(c *gin.Context) {
+	namespace := c.Param("ns")
+	podname := c.Param("po")
+	podjson := c.PostForm("json")
+
+	var pod api.Pod
+	err := json.Unmarshal([]byte(podjson), &pod)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	rcname, ok := pod.Labels["managed-by"]
+	if !ok {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Need a `managed-by` label"})
+		return
+	}
+	rc, err := kubeclient.Get().ReplicationControllers(namespace).Get(rcname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	rc.Spec.Template.Spec = pod.Spec
+	rc.Annotations["template-spec-copied-from"] = podname
+	_, err = kubeclient.Get().ReplicationControllers(namespace).Update(rc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s/replicationcontrollers/%s/edit", namespace, rcname))
+}
+
+func updatePodWithReplicationController(c *gin.Context) {
+	namespace := c.Param("ns")
+	podname := c.Param("po")
+
+	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	rcname, ok := pod.Labels["managed-by"]
+	if !ok {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Need a `managed-by` label"})
+		return
+	}
+	rc, err := kubeclient.Get().ReplicationControllers(namespace).Get(rcname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	pod.Spec = rc.Spec.Template.Spec
+	pod.Annotations["spec-copied-from"] = rcname
+	_, err = kubeclient.Get().Pods(namespace).Update(pod)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s/pods/%s/edit", namespace, podname))
+}
+
+func updateReplicationController(c *gin.Context) {
+	namespace := c.Param("ns")
+	rcname := c.Param("rc")
+	rcjson := c.PostForm("json")
+
+	var rc api.ReplicationController
+	err := json.Unmarshal([]byte(rcjson), &rc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = kubeclient.Get().ReplicationControllers(namespace).Update(&rc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s/replicationcontrollers/%s/edit", namespace, rcname))
 }
