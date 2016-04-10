@@ -1070,7 +1070,6 @@ func updateReplicationControllerWithPod(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
-
 	rcname, ok := pod.Labels["managed-by"]
 	if !ok {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Need a `managed-by` label"})
@@ -1081,7 +1080,12 @@ func updateReplicationControllerWithPod(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
+	nodeName := rc.Spec.Template.Spec.NodeName
 	rc.Spec.Template.Spec = pod.Spec
+	rc.Spec.Template.Spec.NodeName = nodeName
+	if rc.Annotations == nil {
+		rc.Annotations = make(map[string]string)
+	}
 	rc.Annotations["template-spec-copied-from"] = podname
 	_, err = kubeclient.Get().ReplicationControllers(namespace).Update(rc)
 	if err != nil {
@@ -1111,7 +1115,12 @@ func updatePodWithReplicationController(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
+	nodeName := pod.Spec.NodeName
 	pod.Spec = rc.Spec.Template.Spec
+	pod.Spec.NodeName = nodeName
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string)
+	}
 	pod.Annotations["spec-copied-from"] = rcname
 	_, err = kubeclient.Get().Pods(namespace).Update(pod)
 	if err != nil {
