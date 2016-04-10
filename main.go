@@ -53,7 +53,7 @@ func main() {
 	r.Static("/img", "img")
 	r.LoadHTMLGlob("pages/*.html")
 
-	r.GET("/", index)
+	r.GET("/", overview)
 	r.GET("/namespaces/:ns", listOthersInNamespace)
 	r.GET("/namespaces/:ns/pods", listPodsInNamespace)
 	r.GET("/namespaces/:ns/pods/:po", describePod)
@@ -63,9 +63,10 @@ func main() {
 	r.GET("/namespaces/:ns/events", listEventsInNamespace)
 	r.GET("/nodes", listNodes)
 	r.GET("/nodes/:no", describeNode)
-
 	r.GET("/help", help)
+	r.GET("/config", config)
 
+	r.POST("/config/update", updateConfig)
 	r.POST("/namespaces/:ns/pods.form", showPodsForm)
 	r.POST("/namespaces/:ns/pods.action", performPodsAction)
 	r.POST("/namespaces/:ns/pods/:po/update", updatePod)
@@ -74,6 +75,21 @@ func main() {
 	r.POST("/namespaces/:ns/replicationcontrollers/:rc/update", updateReplicationController)
 
 	r.Run(":8080") // listen and serve on 0.0.0.0:8080
+}
+
+func config(c *gin.Context) {
+	c.HTML(http.StatusOK, "config", gin.H{
+		"title":  "Sigma Config",
+		"config": kubeclient.KubeConfig,
+	})
+}
+
+func updateConfig(c *gin.Context) {
+	kubeclient.KubeConfig.APIServerURL = c.PostForm("inputAPIServerURL")
+	kubeclient.KubeConfig.Username = c.PostForm("inputUsername")
+	kubeclient.KubeConfig.Password = c.PostForm("inputPassword")
+	kubeclient.Init()
+	c.Redirect(http.StatusMovedPermanently, "/")
 }
 
 func editReplicationController(c *gin.Context) {
@@ -359,7 +375,7 @@ func help(c *gin.Context) {
 	})
 }
 
-func index(c *gin.Context) {
+func overview(c *gin.Context) {
 	namespaces, err := kubeclient.Get().Namespaces().List(labels.Everything(), fields.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
@@ -391,7 +407,7 @@ func index(c *gin.Context) {
 	}
 	summary.NodeCount = len(nodeList.Items)
 
-	c.HTML(http.StatusOK, "index", gin.H{
+	c.HTML(http.StatusOK, "overview", gin.H{
 		"title":   "Sigma Overview",
 		"summary": summary,
 	})

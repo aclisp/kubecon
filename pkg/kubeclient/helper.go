@@ -1,8 +1,6 @@
 package kubeclient
 
 import (
-	"fmt"
-
 	"github.com/golang/glog"
 
 	"k8s.io/kubernetes/pkg/api"
@@ -20,7 +18,18 @@ const (
 
 var (
 	kubeClient *kube_client.Client
+	KubeConfig = &Config{
+		APIServerURL: "https://61.160.36.122",
+		Username:     "test",
+		Password:     "test123",
+	}
 )
+
+type Config struct {
+	APIServerURL string
+	Username     string
+	Password     string
+}
 
 func Init() {
 	var err error
@@ -44,7 +53,7 @@ func getConfigOverrides() (*kube_clientcmd.ConfigOverrides, error) {
 		},
 	}
 
-	kubeConfigOverride.ClusterInfo.Server = fmt.Sprintf("%s://%s", "https", "61.160.36.122")
+	kubeConfigOverride.ClusterInfo.Server = KubeConfig.APIServerURL
 	kubeConfigOverride.ClusterInfo.InsecureSkipTLSVerify = true
 
 	return &kubeConfigOverride, nil
@@ -60,8 +69,8 @@ func getKubeClient() (*kube_client.Client, error) {
 		Host:     configOverrides.ClusterInfo.Server,
 		Version:  configOverrides.ClusterInfo.APIVersion,
 		Insecure: configOverrides.ClusterInfo.InsecureSkipTLSVerify,
-		Username: "test",
-		Password: "test123",
+		Username: KubeConfig.Username,
+		Password: KubeConfig.Password,
 	}
 	kubeClient := kube_client.NewOrDie(kubeConfig)
 	return kubeClient, nil
