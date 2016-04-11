@@ -21,7 +21,7 @@
             },
             "spec": {
                 "nodeSelector": {
-                    "project": "test"
+                    "project": "default"
                 },
                 "containers": [{
                     "name": "AUTO",

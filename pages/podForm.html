@@ -22,11 +22,12 @@
             {{end}}
         </tr>
         {{end}}
+        {{if eq .action "upgrade" "downgrade"}}
         <tr>
             <th></th>
             {{range $image := .images}}
             <th>
-            {{with $image.Tags}}
+            {{if $image.Tags}}
             版本改变为
             <select class="podimage">
                 <option value="">请选择</option>
@@ -34,10 +35,16 @@
                 <option value="{{$image.Name}}:{{.}}">{{.}}</option>
                 {{end}}
             </select>
+            {{else}}
+            无可用版本
+            <select class="podimage none" style="display: none;">
+                <option value=""></option>
+            </select>
             {{end}}
             </th>
             {{end}}
         </tr>
+        {{end}}
     </tbody>
 </table>
 
@@ -53,8 +60,8 @@
 $(document).ready(function() {
     var action = "{{.action}}";
     if (action == "upgrade" || action == "downgrade") {
-        var selects = document.getElementsByClassName('podimage');
-        if (selects.length === 0) {
+        var selects = document.getElementsByClassName('podimage none');
+        if (selects.length >= 2) {
             $("#submit").prop('disabled', true);
         }
     }
