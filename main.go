@@ -57,8 +57,9 @@ func main() {
 	r.LoadHTMLGlob("pages/*.html")
 
 	a := r.Group("/", gin.BasicAuth(gin.Accounts{
-		"admin":  "secretsigma",
-		"bamboo": "oobmab",
+		"admin":   "secretsigma",
+		"bamboo":  "oobmab",
+		"default": "test123",
 	}))
 
 	a.GET("/", overview)
@@ -463,7 +464,8 @@ func listNodes(c *gin.Context) {
 func listPodsInNamespace(c *gin.Context) {
 	namespace := c.Param("ns")
 
-	if namespace == "kube-system" && c.MustGet(gin.AuthUserKey).(string) != "admin" {
+	user := c.MustGet(gin.AuthUserKey).(string)
+	if user != "admin" && user != namespace {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Unauthorized"})
 		return
 	}
@@ -526,7 +528,8 @@ func listPodsInNamespace(c *gin.Context) {
 func listEventsInNamespace(c *gin.Context) {
 	namespace := c.Param("ns")
 
-	if namespace == "kube-system" && c.MustGet(gin.AuthUserKey).(string) != "admin" {
+	user := c.MustGet(gin.AuthUserKey).(string)
+	if user != "admin" && user != namespace {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Unauthorized"})
 		return
 	}
@@ -546,7 +549,8 @@ func listEventsInNamespace(c *gin.Context) {
 func listOthersInNamespace(c *gin.Context) {
 	namespace := c.Param("ns")
 
-	if namespace == "kube-system" && c.MustGet(gin.AuthUserKey).(string) != "admin" {
+	user := c.MustGet(gin.AuthUserKey).(string)
+	if user != "admin" && user != namespace {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Unauthorized"})
 		return
 	}
