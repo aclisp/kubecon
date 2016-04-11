@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"regexp"
 	"sort"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/kubernetes/pkg/kubectl"
 	"k8s.io/kubernetes/pkg/labels"
 	"k8s.io/kubernetes/pkg/types"
+	"k8s.io/kubernetes/pkg/util"
 )
 
 const (
@@ -85,7 +87,16 @@ func main() {
 	a.POST("/namespaces/:ns/replicationcontrollers/:rc/update", updateReplicationController)
 	a.POST("/namespaces/:ns/replicationcontrollers/:rc/delete", deleteReplicationController)
 
-	r.Run(":8080")
+	certFile := "kubecon.crt"
+	keyFile := "kubecon.key"
+	alternateIPs := []net.IP{net.ParseIP("61.160.36.122")}
+	alternateDNS := []string{"kubecon"}
+	if err := util.GenerateSelfSignedCert("61.160.36.122", certFile, keyFile, alternateIPs, alternateDNS); err != nil {
+		glog.Errorf("Unable to generate self signed cert: %v", err)
+	} else {
+		glog.Infof("Using self-signed cert (%s, %s)", certFile, keyFile)
+	}
+	r.RunTLS(":8080", certFile, keyFile)
 }
 
 func config(c *gin.Context) {
