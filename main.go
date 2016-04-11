@@ -54,30 +54,36 @@ func main() {
 	r.Static("/img", "img")
 	r.LoadHTMLGlob("pages/*.html")
 
-	r.GET("/", overview)
-	r.GET("/namespaces/:ns", listOthersInNamespace)
-	r.GET("/namespaces/:ns/pods", listPodsInNamespace)
-	r.GET("/namespaces/:ns/pods/:po", describePod)
-	r.GET("/namespaces/:ns/pods/:po/log", readPodLog)
-	r.GET("/namespaces/:ns/pods/:po/edit", editPod)
-	r.GET("/namespaces/:ns/replicationcontrollers/:rc/edit", editReplicationController)
-	r.GET("/namespaces/:ns/events", listEventsInNamespace)
-	r.GET("/nodes", listNodes)
-	r.GET("/nodes/:no", describeNode)
-	r.GET("/help", help)
-	r.GET("/config", config)
+	a := r.Group("/", gin.BasicAuth(gin.Accounts{
+		"admin":  "secretsigma",
+		"bamboo": "oobmab",
+	}))
 
-	r.GET("/namespaces/:ns/replicationcontrollers.form", showReplicationControllerForm)
-	r.POST("/namespaces/:ns/replicationcontrollers", createReplicationController)
+	a.GET("/", overview)
+	a.GET("/namespaces/:ns", listOthersInNamespace)
+	a.GET("/namespaces/:ns/pods", listPodsInNamespace)
+	a.GET("/namespaces/:ns/pods/:po", describePod)
+	a.GET("/namespaces/:ns/pods/:po/log", readPodLog)
+	a.GET("/namespaces/:ns/pods/:po/edit", editPod)
+	a.GET("/namespaces/:ns/replicationcontrollers/:rc/edit", editReplicationController)
+	a.GET("/namespaces/:ns/events", listEventsInNamespace)
+	a.GET("/nodes", listNodes)
+	a.GET("/nodes/:no", describeNode)
+	a.GET("/help", help)
+	a.GET("/config", config)
 
-	r.POST("/config/update", updateConfig)
-	r.POST("/namespaces/:ns/pods.form", showPodsForm)
-	r.POST("/namespaces/:ns/pods.action", performPodsAction)
-	r.POST("/namespaces/:ns/pods/:po/update", updatePod)
-	r.POST("/namespaces/:ns/pods/:po/export", updateReplicationControllerWithPod)
-	r.POST("/namespaces/:ns/pods/:po/import", updatePodWithReplicationController)
-	r.POST("/namespaces/:ns/replicationcontrollers/:rc/update", updateReplicationController)
-	r.POST("/namespaces/:ns/replicationcontrollers/:rc/delete", deleteReplicationController)
+	a.GET("/namespaces/:ns/replicationcontrollers.form", showReplicationControllerForm)
+	a.POST("/namespaces/:ns/replicationcontrollers", createReplicationController)
+
+	a.POST("/namespaces/:ns/pods.form", showPodsForm)
+	a.POST("/namespaces/:ns/pods", performPodsAction)
+
+	a.POST("/config/update", updateConfig)
+	a.POST("/namespaces/:ns/pods/:po/update", updatePod)
+	a.POST("/namespaces/:ns/pods/:po/export", updateReplicationControllerWithPod)
+	a.POST("/namespaces/:ns/pods/:po/import", updatePodWithReplicationController)
+	a.POST("/namespaces/:ns/replicationcontrollers/:rc/update", updateReplicationController)
+	a.POST("/namespaces/:ns/replicationcontrollers/:rc/delete", deleteReplicationController)
 
 	r.Run(":8080")
 }
@@ -90,6 +96,11 @@ func config(c *gin.Context) {
 }
 
 func updateConfig(c *gin.Context) {
+	if c.MustGet(gin.AuthUserKey).(string) != "admin" {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Unauthorized"})
+		return
+	}
+
 	kubeclient.KubeConfig.APIServerURL = c.PostForm("inputAPIServerURL")
 	kubeclient.KubeConfig.Username = c.PostForm("inputUsername")
 	kubeclient.KubeConfig.Password = c.PostForm("inputPassword")
@@ -421,6 +432,11 @@ func overview(c *gin.Context) {
 }
 
 func listNodes(c *gin.Context) {
+	if c.MustGet(gin.AuthUserKey).(string) != "admin" {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Unauthorized"})
+		return
+	}
+
 	list, err := kubeclient.Get().Nodes().List(labels.Everything(), fields.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
@@ -435,6 +451,12 @@ func listNodes(c *gin.Context) {
 
 func listPodsInNamespace(c *gin.Context) {
 	namespace := c.Param("ns")
+
+	if namespace == "kube-system" && c.MustGet(gin.AuthUserKey).(string) != "admin" {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Unauthorized"})
+		return
+	}
+
 	labelSelectorString, ok := c.GetQuery("labelSelector")
 	var labelSelector labels.Selector
 	if !ok {
@@ -493,6 +515,11 @@ func listPodsInNamespace(c *gin.Context) {
 func listEventsInNamespace(c *gin.Context) {
 	namespace := c.Param("ns")
 
+	if namespace == "kube-system" && c.MustGet(gin.AuthUserKey).(string) != "admin" {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Unauthorized"})
+		return
+	}
+
 	list, err := kubeclient.Get().Events(namespace).List(labels.Everything(), fields.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
@@ -507,6 +534,12 @@ func listEventsInNamespace(c *gin.Context) {
 
 func listOthersInNamespace(c *gin.Context) {
 	namespace := c.Param("ns")
+
+	if namespace == "kube-system" && c.MustGet(gin.AuthUserKey).(string) != "admin" {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Unauthorized"})
+		return
+	}
+
 	rcList, err := kubeclient.Get().ReplicationControllers(namespace).List(labels.Everything())
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})

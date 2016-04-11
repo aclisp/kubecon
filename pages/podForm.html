@@ -86,7 +86,7 @@ function submit() {
         }
     }
     $('#loading').show();
-    post('/namespaces/{{.namespace}}/pods.action', {
+    post('/namespaces/{{.namespace}}/pods', {
         action: action,
         pods: JSON.stringify(pods),
         images: JSON.stringify(images),
