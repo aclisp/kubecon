@@ -1009,6 +1009,12 @@ func performPodsAction(c *gin.Context) {
 				errs = append(errs, err)
 			}
 		}
+	case "sync":
+		for _, podname := range pods {
+			if err := syncPod(namespace, podname); err != nil {
+				errs = append(errs, err)
+			}
+		}
 	case "delete":
 	}
 
@@ -1085,6 +1091,30 @@ func startPod(namespace string, podname string) error {
 	return nil
 }
 
+func syncPod(namespace string, podname string) error {
+	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
+	if err != nil {
+		return err
+	}
+	rcname, ok := pod.Labels["managed-by"]
+	if !ok {
+		return fmt.Errorf("Need a `managed-by` label")
+	}
+	rc, err := kubeclient.Get().ReplicationControllers(namespace).Get(rcname)
+	if err != nil {
+		return err
+	}
+	nodeName := pod.Spec.NodeName
+	pod.Spec = rc.Spec.Template.Spec
+	pod.Spec.NodeName = nodeName
+	if pod.Annotations == nil {
+		pod.Annotations = make(map[string]string)
+	}
+	pod.Annotations["copied-from"] = rcname
+	_, err = kubeclient.Get().Pods(namespace).Update(pod)
+	return err
+}
+
 func updatePod(c *gin.Context) {
 	namespace := c.Param("ns")
 	podname := c.Param("po")
@@ -1147,29 +1177,7 @@ func updatePodWithReplicationController(c *gin.Context) {
 	namespace := c.Param("ns")
 	podname := c.Param("po")
 
-	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
-		return
-	}
-	rcname, ok := pod.Labels["managed-by"]
-	if !ok {
-		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Need a `managed-by` label"})
-		return
-	}
-	rc, err := kubeclient.Get().ReplicationControllers(namespace).Get(rcname)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
-		return
-	}
-	nodeName := pod.Spec.NodeName
-	pod.Spec = rc.Spec.Template.Spec
-	pod.Spec.NodeName = nodeName
-	if pod.Annotations == nil {
-		pod.Annotations = make(map[string]string)
-	}
-	pod.Annotations["copied-from"] = rcname
-	_, err = kubeclient.Get().Pods(namespace).Update(pod)
+	err := syncPod(namespace, podname)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return

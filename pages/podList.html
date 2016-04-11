@@ -2,12 +2,18 @@
 {{template "header" .}}
 
 <div class="main">
+    <ol class="breadcrumb">
+        <li><a href="/namespaces/{{.namespace}}">{{.namespace}}</a></li>
+        <li><a href="/namespaces/{{.namespace}}/pods">pods</a></li>
+        <li class="active">{{.queries.labelSelector}}</li>
+    </ol>
     <h1 class="page-header">容器管理</h1>
 
     <p>
     <div class="btn-group btn-group-sm">
         <button type="button" onclick="getForm(this)" id="upgrade" name="imageAction" disabled="disabled" class="btn btn-warning">升级</button>
         <button type="button" onclick="getForm(this)" id="downgrade" name="imageAction" disabled="disabled" class="btn btn-success">回滚</button>
+        <button type="button" onclick="getForm(this)" id="sync" name="syncAction" disabled="disabled" class="btn btn-default" title="与副本模板同步">同步</button>
     </div>
     <div class="btn-group btn-group-sm">
         <button type="button" onclick="getForm(this)" id="start" name="instanceAction" disabled="disabled" class="btn btn-info">启动</button>
@@ -167,6 +173,9 @@ function enableActionButton(enable) {
     $("button[name='instanceAction']").prop('disabled', !enable);
     if (imageFilter.selectedIndex > 0) {
         $("button[name='imageAction']").prop('disabled', !enable);
+    }
+    if ("{{.queries.labelSelector}}".length > 0) {
+        $("button[name='syncAction']").prop('disabled', !enable);
     }
 }
 function toggleAll(source) {

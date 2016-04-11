@@ -2,6 +2,11 @@
 {{template "header" .}}
 
 <div class="main">
+    <ol class="breadcrumb">
+        <li><a href="/namespaces/{{.namespace}}">{{.namespace}}</a></li>
+        <li><a href="/namespaces/{{.namespace}}/pods">pods</a></li>
+        <li class="active">{{.pod}}</li>
+    </ol>
     <h1 class="page-header">{{.pod}}</h1>
 
     <div class="btn-group" role="group">

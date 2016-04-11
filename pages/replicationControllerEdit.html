@@ -4,6 +4,11 @@
 <script src="/js/jsoneditor.min.js"></script>
 
 <div class="main">
+    <ol class="breadcrumb">
+      <li><a href="/namespaces/{{.namespace}}">{{.namespace}}</a></li>
+      <li class="active">replicationcontrollers</li>
+      <li class="active">{{.objname}}</li>
+    </ol>
     <h1 class="page-header">{{.objname}}</h1>
 
     <div class="btn-group" role="group">
