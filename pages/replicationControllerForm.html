@@ -1,21 +1,16 @@
-{{define "replicationControllerEdit"}}
+{{define "replicationControllerForm"}}
 {{template "header" .}}
 
 <script src="/js/jsoneditor.min.js"></script>
 
 <div class="main">
-    <h1 class="page-header">{{.objname}}</h1>
+    <h1 class="page-header">Create</h1>
 
     <div class="btn-group" role="group">
-        {{if eq .delete `true`}}
-        <button type="button" onclick="deleteMe()" id="delete" class="btn btn-danger">删除实例</button>
-        {{else}}
         <button type="button" onclick="submit()" id="submit" class="btn btn-warning">提交更改</button>
-        {{end}}
     </div>
 
     <div id="jsoneditor" style="width: 100%; height: 500px;"></div>
-
 </div>
 
 <script src="/js/page.js"></script>
@@ -34,13 +29,8 @@ var editor = new JSONEditor(container, options, object);
 // submit button
 function submit() {
     var object = editor.get();
-    post('/namespaces/{{.namespace}}/replicationcontrollers/{{.objname}}/update', {
+    post('/namespaces/{{.namespace}}/replicationcontrollers', {
         json: JSON.stringify(object),
-    });
-}
-// delete button
-function deleteMe() {
-    post('/namespaces/{{.namespace}}/replicationcontrollers/{{.objname}}/delete', {
     });
 }
 </script>

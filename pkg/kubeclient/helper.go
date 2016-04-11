@@ -77,26 +77,6 @@ func getKubeClient() (*kube_client.Client, error) {
 }
 
 func GetAllPods() ([]*api.Pod, error) {
-	/*
-		namespaces, err := kubeClient.Namespaces().List(labels.Everything(), fields.Everything())
-		if err != nil {
-			return nil, err
-		}
-		var result []*api.Pod
-		for i := range namespaces.Items {
-			namespace := namespaces.Items[i].Name
-			podList, err := kubeClient.Pods(namespace).List(labels.Everything(), fields.Everything())
-			if err != nil {
-				glog.Errorf("Can not get pods in namespace '%s': %v", namespace, err)
-				continue
-			}
-			for j := range podList.Items {
-				pod := &podList.Items[j]
-				result = append(result, pod)
-			}
-		}
-		return result, nil
-	*/
 	podList, err := kubeClient.Pods("").List(labels.Everything(), fields.Everything())
 	if err != nil {
 		return nil, err

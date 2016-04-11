@@ -1,0 +1,154 @@
+{
+    "kind": "ReplicationController",
+    "apiVersion": "v1",
+    "metadata": {
+        "name": "NEED INPUT"
+    },
+    "spec": {
+        "replicas": 3,
+        "selector": {
+            "managed-by": "AUTO"
+        },
+        "template": {
+            "metadata": {
+                "labels": {
+                    "managed-by": "AUTO"
+                },
+                "annotations": {
+                    "USER_DEFINED_1": "VALUE_1",
+                    "USER_DEFINED_2": "VALUE_2"
+                }
+            },
+            "spec": {
+                "nodeSelector": {
+                    "project": "test"
+                },
+                "containers": [{
+                    "name": "AUTO",
+                    "image": "61.160.36.122:8080/default/myapp:1.0.0",
+                    "ports": [{
+                        "name": "ssh",
+                        "containerPort": 22
+                    }, {
+                        "name": "app",
+                        "containerPort": 3306
+                    }],
+                    "resources": {
+                        "requests": {
+                            "cpu": "1",
+                            "memory": "2Gi"
+                        },
+                        "limits": {
+                            "cpu": "10",
+                            "memory": "20Gi"
+                        }
+                    },
+                    "volumeMounts": [{
+                        "name": "shared-volume",
+                        "mountPath": "/etc/shared-volume"
+                    }, {
+                        "name": "hostinfo",
+                        "mountPath": "/home/dspeak/yyms",
+                        "readOnly": true
+                    }, {
+                        "name": "localtime",
+                        "mountPath": "/etc/localtime",
+                        "readOnly": true
+                    }, {
+                        "name": "yy-repos",
+                        "mountPath": "/usr/local/i386",
+                        "readOnly": true
+                    }, {
+                        "name": "yymp-agent-sock",
+                        "mountPath": "/tmp/yymp.agent.sock"
+                    }, {
+                        "name": "reflection",
+                        "mountPath": "/etc/reflection",
+                        "readOnly": true
+                    }, {
+                        "name": "persist",
+                        "mountPath": "/persist"
+                    }, {
+                        "name": "app-data",
+                        "mountPath": "/var/lib/app-data"
+                    }],
+                    "env": [{
+                        "name": "SSH_PUBLIC_KEY",
+                        "value": "ssh-dss AAAAB3NzaC1kc3MAAACBAIt56WKO9Ivj2OCvLnu7009douKWfik5sBD6aHHw1SJGaEHcfroSAgl01qF/63XfwDXpnJq0h1vJ2tEvsASrMjaIkVbVDOFHXN0ZF6h4okwfCU/smfX7qFIAJI+chtyviKQPGJITDgyuFaBqc8fpRgx1pPsK1pkjlqPs7q2KH23vAAAAFQDu5hGorui5l+JGgQYGQzA+QjockQAAAIAcgW6/U0V4WlfVqsjyBSawiBaOdaGK54aNxeSZMBjvX9PGDMV1OQSZUW8pV9yvxCX8gAHrBMxlHGJVqlLz0pvv7+IJKNQftf6MG/ijd9amFS+KxwM2KJlGh4lYG4dOlj4MZtt82Ts4HfvQlCY6nLdvC2MeuyVG/GDZ0CY4HvLW+QAAAIAtbhvJqauEEuVSXXlzT0HFa7nc+0tQQZbMMRezmVALa6mS34r+wSBIlZQBLs5OSnHKC6ZA3LBM29IRRVz6JO38ecCiomaf5E1hmyHEO1Orl4f2yxqDjYJcJiu9BZ3cWNoE4+udF50/Eke2RS6iPKIvM5iZfm2Y+TJQ4BpiajDQpA== dw_huanghao"
+                    }, {
+                        "name": "APP_DEFINED_1",
+                        "value": "VALUE_1"
+                    }]
+                }, {
+                    "name": "data-volume",
+                    "image": "61.160.36.122:8080/default/myapp-config:1.0.0",
+                    "volumeMounts": [{
+                        "name": "shared-volume",
+                        "mountPath": "/shared-volume"
+                    }]
+                }],
+                "volumes": [{
+                    "name": "shared-volume",
+                    "emptyDir": {
+                        "medium": ""
+                    }
+                }, {
+                    "name": "hostinfo",
+                    "hostPath": {
+                        "path": "/home/dspeak/yyms"
+                    }
+                }, {
+                    "name": "localtime",
+                    "hostPath": {
+                        "path": "/etc/localtime"
+                    }
+                }, {
+                    "name": "yy-repos",
+                    "hostPath": {
+                        "path": "/usr/local/i386"
+                    }
+                }, {
+                    "name": "yymp-agent-sock",
+                    "hostPath": {
+                        "path": "/tmp/yymp.agent.sock"
+                    }
+                }, {
+                    "name": "reflection",
+                    "downwardAPI": {
+                        "items": [{
+                            "path": "annotations",
+                            "fieldRef": {
+                                "fieldPath": "metadata.annotations"
+                            }
+                        }, {
+                            "path": "labels",
+                            "fieldRef": {
+                                "fieldPath": "metadata.labels"
+                            }
+                        }, {
+                            "path": "instancename",
+                            "fieldRef": {
+                                "fieldPath": "metadata.name"
+                            }
+                        }, {
+                            "path": "projectname",
+                            "fieldRef": {
+                                "fieldPath": "metadata.namespace"
+                            }
+                        }]
+                    }
+                }, {
+                    "name": "persist",
+                    "emptyDir": {
+                        "medium": ""
+                    }
+                }, {
+                    "name": "app-data",
+                    "emptyDir": {
+                        "medium": ""
+                    }
+                }]
+            }
+        }
+    }
+}

@@ -12,8 +12,8 @@
         <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}/log?previous" role="button">上次日志</a>
         <a class="btn btn-default active" href="/namespaces/{{.namespace}}/pods/{{.pod}}/edit" role="button">编辑描述</a>
         <button type="button" onclick="submit()" id="submit" class="btn btn-warning">提交更改</button>
-        <button type="button" onclick="exportTemplate()" id="sync" class="btn btn-info" title="以此容器为模板更新副本控制器"><span class="glyphicon glyphicon-export"></span>导出副本</button>
-        <button type="button" onclick="importTemplate()" id="sync" class="btn btn-warning" title="以副本控制器的模板更新此容器"><span class="glyphicon glyphicon-import"></span>导入副本</button>
+        <button type="button" onclick="exportTemplate()" id="export" class="btn btn-info" title="以此容器为模板更新副本控制器"><span class="glyphicon glyphicon-export"></span>导出副本</button>
+        <button type="button" onclick="importTemplate()" id="import" class="btn btn-warning" title="以副本控制器的模板更新此容器"><span class="glyphicon glyphicon-import"></span>导入副本</button>
     </div>
 
     <div id="jsoneditor" style="width: 100%; height: 500px;"></div>

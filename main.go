@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"regexp"
 	"sort"
@@ -66,6 +67,9 @@ func main() {
 	r.GET("/help", help)
 	r.GET("/config", config)
 
+	r.GET("/namespaces/:ns/replicationcontrollers.form", showReplicationControllerForm)
+	r.POST("/namespaces/:ns/replicationcontrollers", createReplicationController)
+
 	r.POST("/config/update", updateConfig)
 	r.POST("/namespaces/:ns/pods.form", showPodsForm)
 	r.POST("/namespaces/:ns/pods.action", performPodsAction)
@@ -73,8 +77,9 @@ func main() {
 	r.POST("/namespaces/:ns/pods/:po/export", updateReplicationControllerWithPod)
 	r.POST("/namespaces/:ns/pods/:po/import", updatePodWithReplicationController)
 	r.POST("/namespaces/:ns/replicationcontrollers/:rc/update", updateReplicationController)
+	r.POST("/namespaces/:ns/replicationcontrollers/:rc/delete", deleteReplicationController)
 
-	r.Run(":8080") // listen and serve on 0.0.0.0:8080
+	r.Run(":8080")
 }
 
 func config(c *gin.Context) {
@@ -95,6 +100,7 @@ func updateConfig(c *gin.Context) {
 func editReplicationController(c *gin.Context) {
 	namespace := c.Param("ns")
 	rcname := c.Param("rc")
+	_, delete := c.GetQuery("delete")
 
 	rc, err := kubeclient.Get().ReplicationControllers(namespace).Get(rcname)
 	if err != nil {
@@ -120,6 +126,7 @@ func editReplicationController(c *gin.Context) {
 		"namespace": namespace,
 		"objname":   rcname,
 		"json":      out.String(),
+		"delete":    strconv.FormatBool(delete),
 	})
 }
 
@@ -965,19 +972,16 @@ func performPodsAction(c *gin.Context) {
 		c.HTML(http.StatusInternalServerError, "errors", gin.H{"errors": errors})
 	} else {
 		re := regexp.MustCompile("status=([^&]+)")
-		//glog.Infof("Redirect to location: %q", location)
 		location = re.ReplaceAllString(location, "status=")
 		re = regexp.MustCompile("image=([^&]+)")
 		location = re.ReplaceAllString(location, "image=")
 		c.Redirect(http.StatusMovedPermanently, location)
 	}
-	//c.String(http.StatusOK, "%#v, %#v, %#v, %#v", namespace, action, pods, images)
 }
 
 func setPodImage(namespace string, podname string, fullImages []string) error {
 	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
 	if err != nil {
-		//glog.Errorf("Unable to set image of '%s/%s': kube get: %v", namespace, podname, err)
 		return err
 	}
 
@@ -990,7 +994,6 @@ func setPodImage(namespace string, podname string, fullImages []string) error {
 	}
 	_, err = kubeclient.Get().Pods(namespace).Update(pod)
 	if err != nil {
-		//glog.Errorf("Unable to set image of '%s/%s': kube update: %v", namespace, podname, err)
 		return err
 	}
 	return nil
@@ -999,7 +1002,6 @@ func setPodImage(namespace string, podname string, fullImages []string) error {
 func stopPod(namespace string, podname string) error {
 	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
 	if err != nil {
-		//glog.Errorf("Unable to stop '%s/%s': kube get: %v", namespace, podname, err)
 		return err
 	}
 	if pod.Spec.Containers[0].Image == PauseImage {
@@ -1011,7 +1013,6 @@ func stopPod(namespace string, podname string) error {
 	pod.Spec.Containers[0].Image = PauseImage
 	_, err = kubeclient.Get().Pods(namespace).Update(pod)
 	if err != nil {
-		//glog.Errorf("Unable to stop '%s/%s': kube update: %v", namespace, podname, err)
 		return err
 	}
 	return nil
@@ -1020,7 +1021,6 @@ func stopPod(namespace string, podname string) error {
 func startPod(namespace string, podname string) error {
 	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
 	if err != nil {
-		//glog.Errorf("Unable to start '%s/%s': kube get: %v", namespace, podname, err)
 		return err
 	}
 	if pod.Spec.Containers[0].Image != PauseImage {
@@ -1032,7 +1032,6 @@ func startPod(namespace string, podname string) error {
 	delete(pod.Annotations, "paused")
 	_, err = kubeclient.Get().Pods(namespace).Update(pod)
 	if err != nil {
-		//glog.Errorf("Unable to start '%s/%s': kube update: %v", namespace, podname, err)
 		return err
 	}
 	return nil
@@ -1086,7 +1085,7 @@ func updateReplicationControllerWithPod(c *gin.Context) {
 	if rc.Annotations == nil {
 		rc.Annotations = make(map[string]string)
 	}
-	rc.Annotations["template-spec-copied-from"] = podname
+	rc.Annotations["copied-from"] = podname
 	_, err = kubeclient.Get().ReplicationControllers(namespace).Update(rc)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
@@ -1121,7 +1120,7 @@ func updatePodWithReplicationController(c *gin.Context) {
 	if pod.Annotations == nil {
 		pod.Annotations = make(map[string]string)
 	}
-	pod.Annotations["spec-copied-from"] = rcname
+	pod.Annotations["copied-from"] = rcname
 	_, err = kubeclient.Get().Pods(namespace).Update(pod)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
@@ -1150,4 +1149,72 @@ func updateReplicationController(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s/replicationcontrollers/%s/edit", namespace, rcname))
+}
+
+func deleteReplicationController(c *gin.Context) {
+	namespace := c.Param("ns")
+	rcname := c.Param("rc")
+
+	rc, err := kubeclient.Get().ReplicationControllers(namespace).Get(rcname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	if rc.Spec.Replicas > 0 || rc.Status.Replicas > 0 {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": "Replicas must be 0"})
+		return
+	}
+	err = kubeclient.Get().ReplicationControllers(namespace).Delete(rcname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s", namespace))
+}
+
+func showReplicationControllerForm(c *gin.Context) {
+	namespace := c.Param("ns")
+
+	bytes, err := ioutil.ReadFile("replication-controller.json")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.HTML(http.StatusOK, "replicationControllerForm", gin.H{
+		"title":     namespace,
+		"namespace": namespace,
+		"json":      string(bytes),
+	})
+}
+
+func createReplicationController(c *gin.Context) {
+	namespace := c.Param("ns")
+	rcjson := c.PostForm("json")
+
+	var rc api.ReplicationController
+	err := json.Unmarshal([]byte(rcjson), &rc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	if rc.Spec.Selector == nil {
+		rc.Spec.Selector = make(map[string]string)
+	}
+	rc.Spec.Selector["managed-by"] = rc.Name
+	if rc.Spec.Template.Labels == nil {
+		rc.Spec.Template.Labels = make(map[string]string)
+	}
+	rc.Spec.Template.Labels["managed-by"] = rc.Name
+	rc.Spec.Template.Spec.Containers[0].Name = rc.Name
+
+	_, err = kubeclient.Get().ReplicationControllers(namespace).Create(&rc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s", namespace))
 }
