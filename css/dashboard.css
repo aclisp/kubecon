@@ -103,3 +103,11 @@ body {
   display: inline-block;
   border-radius: 50%;
 }
+
+/*
+ * Others
+ */
+#jsoneditor {
+  width: 100%;
+  height: 700px;
+}
