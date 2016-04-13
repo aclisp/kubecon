@@ -70,6 +70,7 @@
         <th>端口</th>
         <th>存活</th>
         <th>选取规则</th>
+        <th>操作</th>
     </tr>
     </thead>
     <tbody>
@@ -92,6 +93,11 @@
         <td>{{range $k, $v := .Selector}}
             <span class="label label-default">{{printf "%s=%s" $k $v}}</span>{{end}}
         </td>
+        <td>
+            <a href="/namespaces/{{$.ns}}/services/{{.Name}}/edit">
+                <span class="glyphicon glyphicon-edit" title="编辑描述"></span>
+            </a>
+        </td>
     </tr>
     {{end}}
     </tbody>
@@ -106,6 +112,7 @@
         <th>实例名</th>
         <th>存活</th>
         <th>目标地址</th>
+        <th>操作</th>
     </tr>
     </thead>
     <tbody>
@@ -114,6 +121,11 @@
         <td>{{.Name}}</td>
         <td>{{.Age}}</td>
         <td>{{.Endpoints}}</td>
+        <td>
+            <a href="/namespaces/{{$.ns}}/endpoints/{{.Name}}/edit">
+                <span class="glyphicon glyphicon-edit" title="编辑描述"></span>
+            </a>
+        </td>
     </tr>
     {{end}}
     </tbody>

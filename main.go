@@ -69,6 +69,8 @@ func main() {
 	a.GET("/namespaces/:ns/pods/:po/log", readPodLog)
 	a.GET("/namespaces/:ns/pods/:po/edit", editPod)
 	a.GET("/namespaces/:ns/replicationcontrollers/:rc/edit", editReplicationController)
+	a.GET("/namespaces/:ns/services/:svc/edit", editService)
+	a.GET("/namespaces/:ns/endpoints/:ep/edit", editEndpoints)
 	a.GET("/namespaces/:ns/events", listEventsInNamespace)
 	a.GET("/nodes", listNodes)
 	a.GET("/nodes/:no", describeNode)
@@ -118,6 +120,72 @@ func updateConfig(c *gin.Context) {
 	kubeclient.KubeConfig.Password = c.PostForm("inputPassword")
 	kubeclient.Init()
 	c.Redirect(http.StatusMovedPermanently, "/")
+}
+
+func editService(c *gin.Context) {
+	namespace := c.Param("ns")
+	svcname := c.Param("svc")
+	_, delete := c.GetQuery("delete")
+
+	svc, err := kubeclient.Get().Services(namespace).Get(svcname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	b, err := json.Marshal(svc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "  ")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.HTML(http.StatusOK, "serviceEdit", gin.H{
+		"title":     svcname,
+		"namespace": namespace,
+		"objname":   svcname,
+		"json":      out.String(),
+		"delete":    strconv.FormatBool(delete),
+	})
+}
+
+func editEndpoints(c *gin.Context) {
+	namespace := c.Param("ns")
+	epname := c.Param("ep")
+	_, delete := c.GetQuery("delete")
+
+	ep, err := kubeclient.Get().Endpoints(namespace).Get(epname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	b, err := json.Marshal(ep)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "  ")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.HTML(http.StatusOK, "endpointsEdit", gin.H{
+		"title":     epname,
+		"namespace": namespace,
+		"objname":   epname,
+		"json":      out.String(),
+		"delete":    strconv.FormatBool(delete),
+	})
 }
 
 func editReplicationController(c *gin.Context) {

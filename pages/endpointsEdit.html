@@ -1,0 +1,54 @@
+{{define "endpointsEdit"}}
+{{template "header" .}}
+
+<script src="/js/jsoneditor.min.js"></script>
+
+<div class="main">
+    <ol class="breadcrumb">
+      <li>项目 <a href="/namespaces/{{.namespace}}">{{.namespace}}</a></li>
+      <li class="active">LB Backend</li>
+      <li class="active">{{.objname}}</li>
+    </ol>
+    <h1 class="page-header">{{.objname}}</h1>
+
+    <!--div class="btn-group" role="group">
+        {{if eq .delete `true`}}
+        <button type="button" onclick="deleteMe()" id="delete" class="btn btn-danger">删除实例</button>
+        {{else}}
+        <button type="button" onclick="submit()" id="submit" class="btn btn-warning">提交更改</button>
+        {{end}}
+    </div-->
+
+    <div id="jsoneditor"></div>
+
+</div>
+
+<script src="/js/page.js"></script>
+<script>
+// create the editor
+var container = document.getElementById('jsoneditor');
+var options = {
+    modes: ["tree", "code"],
+    mode: "tree",
+    onError: function (err) {
+        alert(err.toString());
+    },
+};
+var object = JSON.parse("{{.json}}");
+var editor = new JSONEditor(container, options, object);
+// submit button
+function submit() {
+    var object = editor.get();
+    post('/namespaces/{{.namespace}}/endpoints/{{.objname}}/update', {
+        json: JSON.stringify(object),
+    });
+}
+// delete button
+function deleteMe() {
+    post('/namespaces/{{.namespace}}/endpoints/{{.objname}}/delete', {
+    });
+}
+</script>
+
+{{template "footer" .}}
+{{end}}
