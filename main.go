@@ -57,9 +57,11 @@ func main() {
 	r.LoadHTMLGlob("pages/*.html")
 
 	a := r.Group("/", gin.BasicAuth(gin.Accounts{
-		"admin":   "secretsigma",
-		"bamboo":  "oobmab",
-		"default": "test123",
+		"admin":    "secretsigma",
+		"bamboo":   "oobmab",
+		"default":  "test123",
+		"rds":      "rrddss",
+		"rds-test": "rrddsstt",
 	}))
 
 	a.GET("/", overview)
@@ -80,6 +82,9 @@ func main() {
 	a.GET("/namespaces/:ns/replicationcontrollers.form", showReplicationControllerForm)
 	a.POST("/namespaces/:ns/replicationcontrollers", createReplicationController)
 
+	a.GET("/namespaces/:ns/services.form", showServiceForm)
+	a.POST("/namespaces/:ns/services", createService)
+
 	a.POST("/namespaces/:ns/pods.form", showPodsForm)
 	a.POST("/namespaces/:ns/pods", performPodsAction)
 
@@ -87,6 +92,10 @@ func main() {
 	a.POST("/namespaces/:ns/pods/:po/update", updatePod)
 	a.POST("/namespaces/:ns/pods/:po/export", updateReplicationControllerWithPod)
 	a.POST("/namespaces/:ns/pods/:po/import", updatePodWithReplicationController)
+	a.POST("/namespaces/:ns/services/:svc/update", updateService)
+	a.POST("/namespaces/:ns/services/:svc/delete", deleteService)
+	a.POST("/namespaces/:ns/endpoints/:ep/update", updateEndpoints)
+	a.POST("/namespaces/:ns/endpoints/:ep/delete", deleteEndpoints)
 	a.POST("/namespaces/:ns/replicationcontrollers/:rc/update", updateReplicationController)
 	a.POST("/namespaces/:ns/replicationcontrollers/:rc/delete", deleteReplicationController)
 
@@ -1335,6 +1344,120 @@ func createReplicationController(c *gin.Context) {
 	rc.Spec.Template.Spec.Containers[0].Name = rc.Name
 
 	_, err = kubeclient.Get().ReplicationControllers(namespace).Create(&rc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s", namespace))
+}
+
+func updateService(c *gin.Context) {
+	namespace := c.Param("ns")
+	svcname := c.Param("svc")
+	svcjson := c.PostForm("json")
+
+	var svc api.Service
+	err := json.Unmarshal([]byte(svcjson), &svc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = kubeclient.Get().Services(namespace).Update(&svc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s/services/%s/edit", namespace, svcname))
+}
+
+func deleteService(c *gin.Context) {
+	namespace := c.Param("ns")
+	svcname := c.Param("svc")
+
+	//svc, err := kubeclient.Get().Services(namespace).Get(svcname)
+	//if err != nil {
+	//	c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+	//	return
+	//}
+	err := kubeclient.Get().Services(namespace).Delete(svcname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s", namespace))
+}
+
+func updateEndpoints(c *gin.Context) {
+	namespace := c.Param("ns")
+	epname := c.Param("ep")
+	epjson := c.PostForm("json")
+
+	var ep api.Endpoints
+	err := json.Unmarshal([]byte(epjson), &ep)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = kubeclient.Get().Endpoints(namespace).Update(&ep)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s/endpoints/%s/edit", namespace, epname))
+}
+
+func deleteEndpoints(c *gin.Context) {
+	namespace := c.Param("ns")
+	epname := c.Param("ep")
+
+	//ep, err := kubeclient.Get().Endpoints(namespace).Get(epname)
+	//if err != nil {
+	//	c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+	//	return
+	//}
+	err := kubeclient.Get().Endpoints(namespace).Delete(epname)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s", namespace))
+}
+
+func showServiceForm(c *gin.Context) {
+	namespace := c.Param("ns")
+
+	bytes, err := ioutil.ReadFile("service.json")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.HTML(http.StatusOK, "serviceForm", gin.H{
+		"title":     namespace,
+		"namespace": namespace,
+		"json":      string(bytes),
+	})
+}
+
+func createService(c *gin.Context) {
+	namespace := c.Param("ns")
+	svcjson := c.PostForm("json")
+
+	var svc api.Service
+	err := json.Unmarshal([]byte(svcjson), &svc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	_, err = kubeclient.Get().Services(namespace).Create(&svc)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return

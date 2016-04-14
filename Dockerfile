@@ -15,6 +15,7 @@ COPY fonts /var/lib/kubecon/fonts
 COPY img /var/lib/kubecon/img
 COPY pages /var/lib/kubecon/pages
 COPY replication-controller.json /var/lib/kubecon/
+COPY service.json /var/lib/kubecon/
 
 # The entrypoint of lightvm will start everything
 # under `/etc/service` as daemon

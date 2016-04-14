@@ -6,18 +6,18 @@
 <div class="main">
     <ol class="breadcrumb">
       <li>项目 <a href="/namespaces/{{.namespace}}">{{.namespace}}</a></li>
-      <li class="active">LB Backend</li>
+      <li class="active">服务后端</li>
       <li class="active">{{.objname}}</li>
     </ol>
     <h1 class="page-header">{{.objname}}</h1>
 
-    <!--div class="btn-group" role="group">
+    <div class="btn-group" role="group">
         {{if eq .delete `true`}}
         <button type="button" onclick="deleteMe()" id="delete" class="btn btn-danger">删除实例</button>
         {{else}}
         <button type="button" onclick="submit()" id="submit" class="btn btn-warning">提交更改</button>
         {{end}}
-    </div-->
+    </div>
 
     <div id="jsoneditor"></div>
 

@@ -6,6 +6,7 @@
 
 <p>
     <a class="btn btn-primary" href="/namespaces/{{.ns}}/replicationcontrollers.form" role="button">创建副本控制器</a>
+    <a class="btn btn-primary" href="/namespaces/{{.ns}}/services.form" role="button">创建服务</a>
 </p>
 
 <table class="table table-condensed table-striped">
@@ -61,7 +62,7 @@
 
 {{if .svcs}}
 <table class="table table-condensed table-striped">
-    <caption>LB Frontend</caption>
+    <caption>服务前端</caption>
     <thead>
     <tr>
         <th>实例名</th>
@@ -97,6 +98,9 @@
             <a href="/namespaces/{{$.ns}}/services/{{.Name}}/edit">
                 <span class="glyphicon glyphicon-edit" title="编辑描述"></span>
             </a>
+            <a href="/namespaces/{{$.ns}}/services/{{.Name}}/edit?delete">
+                <span class="glyphicon glyphicon-trash" title="删除实例"></span>
+            </a>
         </td>
     </tr>
     {{end}}
@@ -106,7 +110,7 @@
 
 {{if .eps}}
 <table class="table table-condensed table-striped">
-    <caption>LB Backend</caption>
+    <caption>服务后端</caption>
     <thead>
     <tr>
         <th>实例名</th>
@@ -124,6 +128,9 @@
         <td>
             <a href="/namespaces/{{$.ns}}/endpoints/{{.Name}}/edit">
                 <span class="glyphicon glyphicon-edit" title="编辑描述"></span>
+            </a>
+            <a href="/namespaces/{{$.ns}}/endpoints/{{.Name}}/edit?delete">
+                <span class="glyphicon glyphicon-trash" title="删除实例"></span>
             </a>
         </td>
     </tr>
