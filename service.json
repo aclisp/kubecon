@@ -9,11 +9,11 @@
             {
                 "name": "http",
                 "port": 8080,
-                "targetPort": "http"
+                "targetPort": "app"
             }
         ],
         "selector": {
-            "NEED INPUT": "NEED INPUT"
+            "managed-by": "NEED INPUT"
         }
     }
 }
