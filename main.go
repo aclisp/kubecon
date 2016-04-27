@@ -939,13 +939,16 @@ func showPodsForm(c *gin.Context) {
 		if len(splits) > 1 {
 			tag = splits[1]
 		}
-		tagList := getImageTags(name)
-		semver.Sort(tagList)
+		var tagList []semver.Version
 		switch action {
 		case "upgrade":
+			tagList = getImageTags(name)
+			semver.Sort(tagList)
 			index := search(tagList, tag)
 			tagList = tagList[index+1:]
 		case "downgrade":
+			tagList = getImageTags(name)
+			semver.Sort(tagList)
 			index := search(tagList, tag)
 			if index == -1 {
 				index = len(tagList)
@@ -981,7 +984,8 @@ func getImageTags(name string) (tags []semver.Version) {
 	url := "http://" + PrivateRepoPrefix + "v2/" + name + "/tags/list"
 	res, err := http.Get(url)
 	if err != nil {
-		panic(err)
+		glog.Errorf("Can not get image %q tags: %v", name, err)
+		return nil
 	}
 	defer res.Body.Close()
 
@@ -989,7 +993,8 @@ func getImageTags(name string) (tags []semver.Version) {
 	decoder := json.NewDecoder(res.Body)
 	err = decoder.Decode(&data)
 	if err != nil {
-		panic(err)
+		glog.Errorf("Can not get image %q tags: %v", name, err)
+		return nil
 	}
 	for _, t := range data.Tags {
 		v, err := semver.Parse(t)
