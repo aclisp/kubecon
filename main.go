@@ -588,6 +588,7 @@ func listPodsInNamespace(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "podList", gin.H{
 		"title":     "Sigma Pods",
+		"refresh":   12,
 		"namespace": namespace,
 		"queries": map[string]string{
 			"labelSelector": labelSelectorString,
@@ -656,12 +657,13 @@ func listOthersInNamespace(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "nsInfo", gin.H{
-		"title": namespace,
-		"ns":    namespace,
-		"rcs":   genReplicationControllers(rcList),
-		"svcs":  genServices(svcList),
-		"eps":   genEndpoints(epList),
-		"nodes": genNodes(nodeList),
+		"refresh": 36,
+		"title":   namespace,
+		"ns":      namespace,
+		"rcs":     genReplicationControllers(rcList),
+		"svcs":    genServices(svcList),
+		"eps":     genEndpoints(epList),
+		"nodes":   genNodes(nodeList),
 	})
 }
 
@@ -1252,7 +1254,7 @@ func updateReplicationControllerWithPod(c *gin.Context) {
 		return
 	}
 
-	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s/replicationcontrollers/%s/edit", namespace, rcname))
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s/pods/%s/edit", namespace, podname))
 }
 
 func updatePodWithReplicationController(c *gin.Context) {
