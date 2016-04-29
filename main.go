@@ -588,7 +588,7 @@ func listPodsInNamespace(c *gin.Context) {
 
 	c.HTML(http.StatusOK, "podList", gin.H{
 		"title":     "Sigma Pods",
-		"refresh":   12,
+		"refresh":   60,
 		"namespace": namespace,
 		"queries": map[string]string{
 			"labelSelector": labelSelectorString,
@@ -657,7 +657,7 @@ func listOthersInNamespace(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "nsInfo", gin.H{
-		"refresh": 36,
+		"refresh": 60,
 		"title":   namespace,
 		"ns":      namespace,
 		"rcs":     genReplicationControllers(rcList),
