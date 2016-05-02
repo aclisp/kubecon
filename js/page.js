@@ -31,3 +31,78 @@ function serialize(obj) {
     }
     return str.join("&");
 }
+
+// Accessing nested JavaScript objects with string key
+// http://stackoverflow.com/questions/6491463/accessing-nested-javascript-objects-with-string-key
+function getPropertyByString(o, s) {
+    s = s.replace(/\[(\w+)\]/g, '.$1'); // convert indexes to properties
+    s = s.replace(/^\./, '');           // strip a leading dot
+    var a = s.split('.');
+    for (var i = 0, n = a.length; i < n; ++i) {
+        var k = a[i];
+        if (k in o) {
+            o = o[k];
+        } else {
+            return;
+        }
+    }
+    return o;
+}
+
+function createJSONEditor(jsonObject, annoString, jsoneditorNode, annoeditorcontainerNode) {
+    var jsoneditor_container = jsoneditorNode;
+    var jsoneditor_options = {
+        modes: ["tree", "code"],
+        mode: "tree",
+        onChange: json2anno,
+        onError: function (err) {
+            alert(err.toString());
+        },
+    };
+    var annoeditor_container = annoeditorcontainerNode;
+    var annoeditor_options = {
+        mode: "code",
+    };
+    var jsoneditor = new JSONEditor(jsoneditor_container, jsoneditor_options, jsonObject);
+    var annoeditors = {};
+    var annotations = getPropertyByString(jsonObject, annoString);
+    if (annotations) {
+        Object.keys(annotations).forEach(function(key) {
+            var header = document.createElement('h5');
+            header.textContent = annoString + "." + key;
+            var container = document.createElement('div');
+            container.setAttribute('id', key);
+            container.setAttribute('class', 'annoeditor');
+            annoeditor_container.appendChild(header);
+            annoeditor_container.appendChild(container);
+            annoeditor_options.onChange = function() { anno2json(key); };
+            var annoeditor = new JSONEditor(container, annoeditor_options);
+            annoeditor.setText(annotations[key]);
+            annoeditors[key] = annoeditor;
+        });
+    }
+    function anno2json(key) {
+        Object.keys(annoeditors).forEach(function(editorKey) {
+            if (key === editorKey) {
+                var object = jsoneditor.get();
+                var annotations = getPropertyByString(object, annoString);
+                if (annotations && annotations[key]) {
+                    annotations[key] = annoeditors[key].getText();
+                    jsoneditor.set(object);
+                }
+            }
+        });
+    }
+    function json2anno() {
+        var object = jsoneditor.get();
+        var annotations = getPropertyByString(object, annoString);
+        if (annotations) {
+            Object.keys(annotations).forEach(function(key) {
+                if (annoeditors[key]) {
+                    annoeditors[key].setText(annotations[key]);
+                }
+            });
+        }
+    }
+    return jsoneditor;
+}

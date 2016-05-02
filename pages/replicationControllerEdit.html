@@ -19,23 +19,28 @@
         {{end}}
     </div>
 
-    <div id="jsoneditor"></div>
+    <div class="container editor-container">
+        <div class="row">
+            <div class="col-md-8 editor-left">
+                <div id="jsoneditor"></div>
+            </div>
+            <div class="col-md-4 editor-right">
+                <div id="annoeditor-container"></div>
+            </div>
+        </div>
+    </div>
 
 </div>
 
 <script src="/js/page.js"></script>
 <script>
 // create the editor
-var container = document.getElementById('jsoneditor');
-var options = {
-    modes: ["tree", "code"],
-    mode: "tree",
-    onError: function (err) {
-        alert(err.toString());
-    },
-};
 var object = JSON.parse("{{.json}}");
-var editor = new JSONEditor(container, options, object);
+var editor = createJSONEditor(
+    object,
+    '.spec.template.metadata.annotations',
+    document.getElementById('jsoneditor'),
+    document.getElementById('annoeditor-container'));
 // submit button
 function submit() {
     var object = editor.get();
