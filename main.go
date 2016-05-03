@@ -1195,6 +1195,11 @@ func syncPod(namespace string, podname string) error {
 		pod.Annotations = make(map[string]string)
 	}
 	pod.Annotations["copied-from"] = rcname
+	for k, v := range rc.Spec.Template.Annotations {
+		if strings.HasPrefix(k, "config/") {
+			pod.Annotations[k] = v
+		}
+	}
 	_, err = kubeclient.Get().Pods(namespace).Update(pod)
 	return err
 }
@@ -1248,6 +1253,14 @@ func updateReplicationControllerWithPod(c *gin.Context) {
 		rc.Annotations = make(map[string]string)
 	}
 	rc.Annotations["copied-from"] = podname
+	if rc.Spec.Template.Annotations == nil {
+		rc.Spec.Template.Annotations = make(map[string]string)
+	}
+	for k, v := range pod.Annotations {
+		if strings.HasPrefix(k, "config/") {
+			rc.Spec.Template.Annotations[k] = v
+		}
+	}
 	_, err = kubeclient.Get().ReplicationControllers(namespace).Update(rc)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})

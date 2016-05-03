@@ -15,8 +15,8 @@
                     "managed-by": "AUTO"
                 },
                 "annotations": {
-                    "user-config-1": "key1=value1\nkey2=value2\n",
-                    "user-config-2": "key3=value3\nkey4=value4\n"
+                    "config/user-defined-1": "key1=value1\nkey2=value2\n",
+                    "config/user-defined-2": "key3=value3\nkey4=value4\n"
                 }
             },
             "spec": {

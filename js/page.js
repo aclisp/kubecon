@@ -71,7 +71,6 @@ function createJSONEditor(jsonObject, annoString, jsoneditorNode, annoeditorcont
             var header = document.createElement('h5');
             header.textContent = annoString + "." + key;
             var container = document.createElement('div');
-            container.setAttribute('id', key);
             container.setAttribute('class', 'annoeditor');
             annoeditor_container.appendChild(header);
             annoeditor_container.appendChild(container);
