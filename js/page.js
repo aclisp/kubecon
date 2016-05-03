@@ -68,16 +68,18 @@ function createJSONEditor(jsonObject, annoString, jsoneditorNode, annoeditorcont
     var annotations = getPropertyByString(jsonObject, annoString);
     if (annotations) {
         Object.keys(annotations).forEach(function(key) {
-            var header = document.createElement('h5');
-            header.textContent = annoString + "." + key;
-            var container = document.createElement('div');
-            container.setAttribute('class', 'annoeditor');
-            annoeditor_container.appendChild(header);
-            annoeditor_container.appendChild(container);
-            annoeditor_options.onChange = function() { anno2json(key); };
-            var annoeditor = new JSONEditor(container, annoeditor_options);
-            annoeditor.setText(annotations[key]);
-            annoeditors[key] = annoeditor;
+            if (key.startsWith('config/')) {
+                var header = document.createElement('h5');
+                header.textContent = annoString + "." + key;
+                var container = document.createElement('div');
+                container.setAttribute('class', 'annoeditor');
+                annoeditor_container.appendChild(header);
+                annoeditor_container.appendChild(container);
+                annoeditor_options.onChange = function() { anno2json(key); };
+                var annoeditor = new JSONEditor(container, annoeditor_options);
+                annoeditor.setText(annotations[key]);
+                annoeditors[key] = annoeditor;
+            }
         });
     }
     function anno2json(key) {
