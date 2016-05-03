@@ -86,7 +86,7 @@ function createJSONEditor(jsonObject, annoString, jsoneditorNode, annoeditorcont
             if (key === editorKey) {
                 var object = jsoneditor.get();
                 var annotations = getPropertyByString(object, annoString);
-                if (annotations && annotations[key]) {
+                if (annotations) {
                     annotations[key] = annoeditors[key].getText();
                     jsoneditor.set(object);
                 }
