@@ -105,5 +105,8 @@ function createJSONEditor(jsonObject, annoString, jsoneditorNode, annoeditorcont
             });
         }
     }
-    return jsoneditor;
+    return {
+        editor: jsoneditor,
+        onChange: json2anno,
+    }
 }

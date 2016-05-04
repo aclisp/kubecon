@@ -42,7 +42,7 @@ var editor = createJSONEditor(
     object,
     '.metadata.annotations',
     document.getElementById('jsoneditor'),
-    document.getElementById('annoeditor-container'));
+    document.getElementById('annoeditor-container')).editor;
 // submit button
 function submit() {
     var object = editor.get();
