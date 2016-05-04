@@ -108,5 +108,5 @@ function createJSONEditor(jsonObject, annoString, jsoneditorNode, annoeditorcont
     return {
         editor: jsoneditor,
         onChange: json2anno,
-    }
+    };
 }

@@ -35,7 +35,7 @@ var result = createJSONEditor(
     '.spec.template.metadata.annotations',
     document.getElementById('jsoneditor'),
     document.getElementById('annoeditor-container'));
-var editor = result.editor
+var editor = result.editor;
 // submit button
 function submit() {
     var object = editor.get();
@@ -45,7 +45,7 @@ function submit() {
 }
 // save and load
 document.getElementById('saveDocument').onclick = function () {
-    try { var object = editor.get(); } catch (e) { alert(e); return; }
+    var object; try { object = editor.get(); } catch (e) { alert(e); return; }
     var blob = new Blob([JSON.stringify(object, null, 2)], {type: 'application/json;charset=utf-8'});
     saveAs(blob, 'replication-controller.json');
 };
