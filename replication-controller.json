@@ -5,7 +5,7 @@
         "name": "NEED INPUT"
     },
     "spec": {
-        "replicas": 3,
+        "replicas": 1,
         "selector": {
             "managed-by": "AUTO"
         },
@@ -15,8 +15,9 @@
                     "managed-by": "AUTO"
                 },
                 "annotations": {
-                    "config/user-defined-1": "key1=value1\nkey2=value2\n",
-                    "config/user-defined-2": "key3=value3\nkey4=value4\n"
+                    "config/slot-1": "",
+                    "config/slot-2": "",
+                    "config/start": "#!/bin/bash\nexec TODO"
                 }
             },
             "spec": {
@@ -75,6 +76,13 @@
                     "env": [{
                         "name": "SSH_PUBLIC_KEY",
                         "value": "ssh-dss AAAAB3NzaC1kc3MAAACBAIt56WKO9Ivj2OCvLnu7009douKWfik5sBD6aHHw1SJGaEHcfroSAgl01qF/63XfwDXpnJq0h1vJ2tEvsASrMjaIkVbVDOFHXN0ZF6h4okwfCU/smfX7qFIAJI+chtyviKQPGJITDgyuFaBqc8fpRgx1pPsK1pkjlqPs7q2KH23vAAAAFQDu5hGorui5l+JGgQYGQzA+QjockQAAAIAcgW6/U0V4WlfVqsjyBSawiBaOdaGK54aNxeSZMBjvX9PGDMV1OQSZUW8pV9yvxCX8gAHrBMxlHGJVqlLz0pvv7+IJKNQftf6MG/ijd9amFS+KxwM2KJlGh4lYG4dOlj4MZtt82Ts4HfvQlCY6nLdvC2MeuyVG/GDZ0CY4HvLW+QAAAIAtbhvJqauEEuVSXXlzT0HFa7nc+0tQQZbMMRezmVALa6mS34r+wSBIlZQBLs5OSnHKC6ZA3LBM29IRRVz6JO38ecCiomaf5E1hmyHEO1Orl4f2yxqDjYJcJiu9BZ3cWNoE4+udF50/Eke2RS6iPKIvM5iZfm2Y+TJQ4BpiajDQpA== dw_huanghao"
+                    }, {
+                        "name": "SIGMA_CONTAINER_IP",
+                        "valueFrom": {
+                            "fieldRef": {
+                                "fieldPath": "status.podIP"
+                            }
+                        }
                     }, {
                         "name": "APP_DEFINED_1",
                         "value": "VALUE_1"

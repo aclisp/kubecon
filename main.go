@@ -1363,6 +1363,16 @@ func createReplicationController(c *gin.Context) {
 	rc.Spec.Template.Labels["managed-by"] = rc.Name
 	rc.Spec.Template.Spec.Containers[0].Name = rc.Name
 
+	var meta api.ObjectMeta // clean metadata
+	meta.Name = rc.Name
+	meta.GenerateName = rc.GenerateName
+	meta.Labels = rc.Labels
+	meta.Annotations = rc.Annotations
+	if meta.Labels != nil {
+		meta.Labels["managed-by"] = rc.Name
+	}
+	rc.ObjectMeta = meta
+
 	_, err = kubeclient.Get().ReplicationControllers(namespace).Create(&rc)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})

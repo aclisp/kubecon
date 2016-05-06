@@ -2,11 +2,13 @@
 {{template "header" .}}
 
 <script src="/js/jsoneditor.min.js"></script>
+<script src="/js/filereader.js"></script>
+<script src="/js/filesaver.js"></script>
 
 <div class="main">
     <ol class="breadcrumb">
       <li>项目 <a href="/namespaces/{{.namespace}}">{{.namespace}}</a></li>
-      <li class="active">服务前端</li>
+      <li class="active">负载均衡前端</li>
       <li class="active">{{.objname}}</li>
     </ol>
     <h1 class="page-header">{{.objname}}</h1>
@@ -16,6 +18,8 @@
         <button type="button" onclick="deleteMe()" id="delete" class="btn btn-danger">删除实例</button>
         {{else}}
         <button type="button" onclick="submit()" id="submit" class="btn btn-warning">提交更改</button>
+        <button type="button" id="saveDocument" class="btn btn-default"><span class="glyphicon glyphicon-save-file"></span>保存文档</button>
+        <span class="btn btn-default btn-file"><span class="glyphicon glyphicon-open-file"></span>载入文档<input type="file" id="loadDocument"></span>
         {{end}}
     </div>
 
@@ -48,6 +52,16 @@ function deleteMe() {
     post('/namespaces/{{.namespace}}/services/{{.objname}}/delete', {
     });
 }
+// save and load
+document.getElementById('saveDocument').onclick = function () {
+    var object; try { object = editor.get(); } catch (e) { alert(e); return; }
+    var blob = new Blob([JSON.stringify(object, null, 2)], {type: 'application/json;charset=utf-8'});
+    saveAs(blob, 'service.json');
+};
+FileReaderJS.setupInput(document.getElementById('loadDocument'), {
+    readAsDefault: 'Text',
+    on: { load: function (event, file) { editor.setMode('code'); editor.setText(event.target.result); } }
+});
 </script>
 
 {{template "footer" .}}
