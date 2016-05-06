@@ -17,7 +17,8 @@
                 "annotations": {
                     "config/slot-1": "",
                     "config/slot-2": "",
-                    "config/start": "#!/bin/bash\nexec TODO"
+                    "config/start-1": "#!/bin/bash\nexec TODO",
+                    "config/start-2": "#!/bin/bash\nexec TODO"
                 }
             },
             "spec": {
