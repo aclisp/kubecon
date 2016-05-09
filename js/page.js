@@ -53,7 +53,7 @@ function createJSONEditor(jsonObject, annoString, jsoneditorNode, annoeditorcont
     var jsoneditor_container = jsoneditorNode;
     var jsoneditor_options = {
         modes: ["tree", "code"],
-        mode: "tree",
+        mode: "code",
         onChange: json2anno,
         onError: function (err) {
             alert(err.toString());
@@ -78,6 +78,7 @@ function createJSONEditor(jsonObject, annoString, jsoneditorNode, annoeditorcont
                 annoeditor_options.onChange = function() { anno2json(key); };
                 var annoeditor = new JSONEditor(container, annoeditor_options);
                 annoeditor.setText(annotations[key]);
+                annoeditor.aceEditor.getSession().setMode('ace/mode/text');
                 annoeditors[key] = annoeditor;
             }
         });
