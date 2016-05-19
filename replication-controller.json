@@ -103,6 +103,14 @@
                 }
               },
               {
+                "name": "SIGMA_CONTAINER_NAME",
+                "valueFrom": {
+                  "fieldRef": {
+                    "fieldPath": "metadata.name"
+                  }
+                }
+              },
+              {
                 "name": "SIGMA_PROJECT_NAME",
                 "valueFrom": {
                   "fieldRef": {
