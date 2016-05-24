@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES6"
+  },
+  "exclude": [
+    "node_modules",
+    ".idea",
+    "fonts",
+    "Godeps",
+    "js",
+    "pages",
+    "pkg"
+  ]
+}

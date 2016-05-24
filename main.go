@@ -50,6 +50,7 @@ func main() {
 	portMapping = regexp.MustCompile(`PortMapping\((.*)\)`)
 
 	r := gin.Default()
+	r.Static("/build", "build")
 	r.Static("/js", "js")
 	r.Static("/css", "css")
 	r.Static("/fonts", "fonts")
