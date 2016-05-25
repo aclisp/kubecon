@@ -54,6 +54,9 @@ class HDFSApp extends Component {
     console.log(`appName: ${form.appName}`);
     console.log(`sshPublicKey: ${form.sshPublicKey}`);
     console.log(`selectedConfig: ${this.state.selectedConfig}`);
+    const namespace = window.location.pathname.split('/', 3).pop();
+    console.log(`currentNamespace: ${namespace}`);
+    // window.location.href = `/namespaces/${namespace}`;
   }
 
   render() {

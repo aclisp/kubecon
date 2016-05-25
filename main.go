@@ -80,6 +80,8 @@ func main() {
 	a.GET("/help", help)
 	a.GET("/config", config)
 
+	a.GET("/namespaces/:ns/application.form", showApplicationForm)
+
 	a.GET("/namespaces/:ns/replicationcontrollers.form", showReplicationControllerForm)
 	a.POST("/namespaces/:ns/replicationcontrollers", createReplicationController)
 
@@ -1495,4 +1497,13 @@ func createService(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s", namespace))
+}
+
+func showApplicationForm(c *gin.Context) {
+	namespace := c.Param("ns")
+
+	c.HTML(http.StatusOK, "applicationForm", gin.H{
+		"title":     namespace,
+		"namespace": namespace,
+	})
 }
