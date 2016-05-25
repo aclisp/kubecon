@@ -10,7 +10,7 @@ module.exports = {
   ],
   devtool: process.env.WEBPACK_DEVTOOL || 'eval-source-map',
   output: {
-    path: path.join(__dirname, 'build'),
+    path: path.join(__dirname, '.'),
     filename: 'bundle.js'
   },
   resolve: {

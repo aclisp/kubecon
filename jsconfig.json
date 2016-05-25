@@ -5,10 +5,13 @@
   "exclude": [
     "node_modules",
     ".idea",
+    ".git",
     "fonts",
     "Godeps",
     "js",
     "pages",
-    "pkg"
+    "pkg",
+    "build",
+    "bundle.js"
   ]
 }
