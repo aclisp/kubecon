@@ -3,7 +3,6 @@ import ApplicationForm from './ApplicationForm';
 
 let configList = [
   {
-    id: 1,
     type: 'basic',
     scale: 0,
     replicas: 1,
@@ -11,7 +10,6 @@ let configList = [
     memory: '2G',
   },
   {
-    id: 2,
     type: 'production',
     scale: 1,
     replicas: 3,
@@ -19,7 +17,6 @@ let configList = [
     memory: '4G',
   },
   {
-    id: 3,
     type: 'production',
     scale: 2,
     replicas: 6,
@@ -27,7 +24,6 @@ let configList = [
     memory: '4G',
   },
   {
-    id: 4,
     type: 'production',
     scale: 4,
     replicas: 12,
@@ -40,7 +36,7 @@ class HDFSApp extends Component {
   constructor() {
     super();
     this.state = {
-      selectedConfig: 1,
+      selectedConfig: 0,
     };
   }
 

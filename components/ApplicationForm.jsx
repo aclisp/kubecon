@@ -15,11 +15,12 @@ class ApplicationForm extends Component {
   }
 
   render() {
-    let configs = this.props.configList.map((cfg) =>
+    let configs = this.props.configList.map((cfg, id) =>
       <ConfigurationItem
         config={cfg}
-        key={cfg.id}
-        selected={this.props.selectedConfig === cfg.id}
+        id={id}
+        key={id}
+        selected={this.props.selectedConfig === id}
         onClick={this.handleConfigClick.bind(this)}
       />
     );
