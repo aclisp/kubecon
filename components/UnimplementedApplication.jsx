@@ -6,7 +6,7 @@ class UnimplementedApplication extends Component {
 
     return (
       <div>
-        <h1 className="page-header">{`Create Dockerized Application - ${title}`}</h1>
+        <h1 className="page-header">{`创建容器化应用 - ${title}`}</h1>
         <p>Coming Soon...</p>
       </div>
     );

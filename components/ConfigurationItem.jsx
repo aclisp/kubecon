@@ -14,13 +14,13 @@ class ConfigurationItem extends Component {
       <div className="col-md-3" >
         <div className={`panel ${className}`} onClick={this.onClick.bind(this, this.props.id)}>
           <div className="panel-heading">
-            {this.props.config.type} ({this.props.config.scale}x)
+            {this.props.config.type}（ {this.props.config.scale}x ）
           </div>
           <div className="panel-body">
             <ul className="list-group">
-              <li className="list-group-item">{this.props.config.replicas} replicas</li>
-              <li className="list-group-item">{this.props.config.cpu} cores per replica </li>
-              <li className="list-group-item">{this.props.config.memory} memory per replica</li>
+              <li className="list-group-item">{this.props.config.replicas} 个副本</li>
+              <li className="list-group-item">{this.props.config.cpu} 核心／副本</li>
+              <li className="list-group-item">{this.props.config.memory} 内存／副本</li>
             </ul>
           </div>
         </div>

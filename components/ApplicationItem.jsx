@@ -8,7 +8,7 @@ class ApplicationItem extends Component {
         <div className="panel panel-default">
           <div className="panel-body">
             <Link to={`/new/${this.props.app.id}`}>
-              {this.props.app.title}
+              <img src={`/img/${this.props.app.id}.png`} alt={`${this.props.app.title}`} />
             </Link>
           </div>
         </div>
