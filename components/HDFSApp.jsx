@@ -32,7 +32,17 @@ const configList = [
   },
 ];
 
-const coreSiteXML = `<configuration>
+const getNameNode = (name) => ({
+  metadata: {
+    name: `hadoop-namenode-${name}`,
+  },
+  spec: {
+    replicas: 0,
+    template: {
+      metadata: {
+        annotations: {
+          'config/core-site.xml': `
+<configuration>
   <property>
     <name>hadoop.tmp.dir</name>
     <value>/persist/hadoop/tmp</value>
@@ -41,9 +51,10 @@ const coreSiteXML = `<configuration>
     <name>fs.defaultFS</name>
     <value>hdfs://MASTER_ADDRESS:12345/</value>
   </property>
-</configuration>`;
-
-const hdfsSiteXML = `<configuration>
+</configuration>
+          `,
+          'config/hdfs-site.xml': `
+<configuration>
   <property>
     <name>dfs.namenode.name.dir</name>
     <value>file:///persist/hadoop/dfs/name</value>
@@ -64,9 +75,16 @@ const hdfsSiteXML = `<configuration>
     <name>dfs.datanode.use.datanode.hostname</name>
     <value>true</value>
   </property>
-</configuration>`;
-
-const startLookupSH = (name) => `#!/bin/bash
+</configuration>
+          `,
+          'config/start-main.sh': `#!/bin/bash
+cp -f /etc/hadoop/core-site.xml /opt/hadoop/etc/hadoop
+cp -f /etc/hadoop/hdfs-site.xml /opt/hadoop/etc/hadoop
+sed -i "s/MASTER_ADDRESS/$SIGMA_CONTAINER_IP/" /opt/hadoop/etc/hadoop/core-site.xml
+/opt/hadoop/bin/hdfs namenode -format -nonInteractive
+exec /opt/hadoop/bin/hdfs namenode
+          `,
+          'config/start-lookup.sh': `#!/bin/bash
 while true; do
   echo '127.0.0.1 localhost' > /etc/hosts
   curl -SGsk -u $SIGMA_LOOKUP_TOKEN \
@@ -78,37 +96,8 @@ while true; do
     $SIGMA_LOOKUP_URL \
     | jq -r '.items[]|"\\(.status.podIP) \\(.metadata.name)"' >> /etc/hosts
   sleep 10
-done`;
-
-const startNameNode = `#!/bin/bash
-cp -f /etc/hadoop/core-site.xml /opt/hadoop/etc/hadoop
-cp -f /etc/hadoop/hdfs-site.xml /opt/hadoop/etc/hadoop
-sed -i "s/MASTER_ADDRESS/$SIGMA_CONTAINER_IP/" /opt/hadoop/etc/hadoop/core-site.xml
-/opt/hadoop/bin/hdfs namenode -format -nonInteractive
-exec /opt/hadoop/bin/hdfs namenode`;
-
-const startDataNode = (name) => `#!/bin/bash
-cp -f /etc/hadoop/core-site.xml /opt/hadoop/etc/hadoop
-cp -f /etc/hadoop/hdfs-site.xml /opt/hadoop/etc/hadoop
-MASTER_ADDRESS=$(curl -SGsk -u $SIGMA_LOOKUP_TOKEN \
-  --data-urlencode labelSelector=managed-by=hadoop-namenode-${name} \
-  $SIGMA_LOOKUP_URL | jq -r '.items[0]|.status.podIP')
-sed -i "s/MASTER_ADDRESS/$MASTER_ADDRESS/" /opt/hadoop/etc/hadoop/core-site.xml
-exec /opt/hadoop/bin/hdfs datanode`;
-
-const getReplicationControllerJSON = (type, name) => ({
-  metadata: {
-    name: `hadoop-${type}-${name}`,
-  },
-  spec: {
-    replicas: 0,
-    template: {
-      metadata: {
-        annotations: {
-          'config/core-site.xml': coreSiteXML,
-          'config/hdfs-site.xml': hdfsSiteXML,
-          'config/start-main.sh': '',
-          'config/start-lookup.sh': startLookupSH(name),
+done
+          `,
         },
       },
       spec: {
@@ -119,7 +108,7 @@ const getReplicationControllerJSON = (type, name) => ({
             image: '61.160.36.122:8080/hadoop-bin:2.7.2-2',
             ports: [
               { name: 'ssh', containerPort: 22 },
-              { name: 'http', containerPort: 0 },
+              { name: 'http', containerPort: 50070 },
             ],
             env: [
               { name: 'SSH_PUBLIC_KEY', value: '' },
@@ -185,6 +174,22 @@ const getReplicationControllerJSON = (type, name) => ({
   },
 });
 
+function postForm(path, params) {
+  const method = 'post';
+  const form = document.createElement('form');
+  form.setAttribute('method', method);
+  form.setAttribute('action', path);
+  Object.keys(params).forEach(key => {
+    const hiddenField = document.createElement('input');
+    hiddenField.setAttribute('type', 'hidden');
+    hiddenField.setAttribute('name', key);
+    hiddenField.setAttribute('value', params[key]);
+    form.appendChild(hiddenField);
+  });
+  document.body.appendChild(form);
+  form.submit();
+}
+
 class HDFSApp extends Component {
   constructor() {
     super();
@@ -203,28 +208,11 @@ class HDFSApp extends Component {
     const { appName, sshPublicKey } = form;
     const selectedConfig = this.state.selectedConfig;
     const namespace = window.location.pathname.split('/', 3).pop();
-    const nameNode = getReplicationControllerJSON('namenode', appName);
-    const dataNode = getReplicationControllerJSON('datanode', appName);
-
+    const nameNode = getNameNode(appName);
     nameNode.spec.template.spec.containers[0].env[0].value = sshPublicKey;
-    nameNode.spec.replicas = 1;
-    nameNode.spec.template.metadata.annotations['config/start-main.sh'] = startNameNode;
-    nameNode.spec.template.spec.containers[0].ports[1] = { name: 'http', containerPort: 50070 };
-
-    dataNode.spec.template.spec.containers[0].env[0].value = sshPublicKey;
-    dataNode.spec.replicas = configList[selectedConfig].replicas;
-    dataNode.spec.template.metadata.annotations['config/start-main.sh'] = startDataNode(appName);
-    dataNode.spec.template.spec.containers[0].ports[1] = { name: 'http', containerPort: 50075 };
-
-    jQuery.ajax(`/api/namespaces/${namespace}/replicationcontrollers`, {
-      method: 'POST',
-      contentType: 'application/json',
-      data: JSON.stringify(nameNode),
-    });
-    jQuery.ajax(`/api/namespaces/${namespace}/replicationcontrollers`, {
-      method: 'POST',
-      contentType: 'application/json',
-      data: JSON.stringify(dataNode),
+    nameNode.spec.replicas = configList[selectedConfig].replicas;
+    postForm(`/namespaces/${namespace}/replicationcontrollers`, {
+      json: JSON.stringify(nameNode),
     });
   }
 

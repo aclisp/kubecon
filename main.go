@@ -102,8 +102,6 @@ func main() {
 	a.POST("/namespaces/:ns/replicationcontrollers/:rc/update", updateReplicationController)
 	a.POST("/namespaces/:ns/replicationcontrollers/:rc/delete", deleteReplicationController)
 
-	a.POST("/api/namespaces/:ns/replicationcontrollers", apiCreateReplicationController)
-
 	certFile := "kubecon.crt"
 	keyFile := "kubecon.key"
 	alternateIPs := []net.IP{net.ParseIP("61.160.36.122")}
@@ -1347,7 +1345,17 @@ func showReplicationControllerForm(c *gin.Context) {
 	})
 }
 
-func processReplicationController(rc *api.ReplicationController) {
+func createReplicationController(c *gin.Context) {
+	namespace := c.Param("ns")
+	rcjson := c.PostForm("json")
+
+	var rc api.ReplicationController
+	err := json.Unmarshal([]byte(rcjson), &rc)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
 	if rc.Spec.Selector == nil {
 		rc.Spec.Selector = make(map[string]string)
 	}
@@ -1367,20 +1375,7 @@ func processReplicationController(rc *api.ReplicationController) {
 		meta.Labels["managed-by"] = rc.Name
 	}
 	rc.ObjectMeta = meta
-}
 
-func createReplicationController(c *gin.Context) {
-	namespace := c.Param("ns")
-	rcjson := c.PostForm("json")
-
-	var rc api.ReplicationController
-	err := json.Unmarshal([]byte(rcjson), &rc)
-	if err != nil {
-		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
-		return
-	}
-
-	processReplicationController(&rc)
 	_, err = kubeclient.Get().ReplicationControllers(namespace).Create(&rc)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
@@ -1388,26 +1383,6 @@ func createReplicationController(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s", namespace))
-}
-
-func apiCreateReplicationController(c *gin.Context) {
-	namespace := c.Param("ns")
-
-	var rc api.ReplicationController
-	err := c.BindJSON(&rc)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	processReplicationController(&rc)
-	_, err = kubeclient.Get().ReplicationControllers(namespace).Create(&rc)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"error": "success"})
 }
 
 func updateService(c *gin.Context) {
