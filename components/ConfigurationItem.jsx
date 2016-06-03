@@ -12,7 +12,7 @@ class ConfigurationItem extends Component {
     }
     return (
       <div className="col-md-3" >
-        <div className={`panel ${className}`} onClick={this.onClick.bind(this, this.props.id)}>
+        <div className={`panel ${className}`} onClick={this.onClick.bind(this, this.props.config.id)}>
           <div className="panel-heading">
             {this.props.config.type} ({this.props.config.scale}x)
           </div>
@@ -31,7 +31,6 @@ class ConfigurationItem extends Component {
 
 ConfigurationItem.propTypes = {
   config: PropTypes.object,
-  id: PropTypes.number,
   selected: PropTypes.bool,
   onClick: PropTypes.func,
 };
