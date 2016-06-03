@@ -28,15 +28,15 @@ class ApplicationForm extends Component {
     return (
       <form onSubmit={this.handleSubmit.bind(this)}>
         <div className="form-group">
-          <label htmlFor="name">应用实例名称</label>
+          <label htmlFor="name">Application name</label>
           <input type="text" className="form-control" id="name" name="name" placeholder="Application name" />
         </div>
         <div className="form-group">
           <label htmlFor="key">SSH public key</label>
-          <textarea className="form-control" id="key" name="key" placeholder="SSH public key" rows="5" />
+          <textarea className="form-control" id="key" name="key" placeholder="SSH public key" rows="4" />
         </div>
         <div className="form-group">
-          <label>选择配置</label>
+          <label>Predefined configuration</label>
           <div className="container-fluid">
             <div className="row">
               {configs}

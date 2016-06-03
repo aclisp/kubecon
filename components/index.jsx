@@ -56,7 +56,7 @@ class ApplicationGallery extends Component {
 
     return (
       <div>
-        <h1 className="page-header">应用市场</h1>
+        <h1 className="page-header">Application Gallery</h1>
         <div className="container-fluid">
           <div className="row">
             {apps}
