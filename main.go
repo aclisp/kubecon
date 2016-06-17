@@ -960,7 +960,7 @@ func showPodsForm(c *gin.Context) {
 		default:
 			tagList = nil
 		}
-		tagList = limit(tagList, 10)
+		tagList = limit(tagList, 50)
 		images = append(images, page.SimpleImage{
 			Name: name,
 			Tags: versionsToStrings(tagList),
@@ -1043,6 +1043,7 @@ func performPodsAction(c *gin.Context) {
 	action := c.PostForm("action")
 	podsJson := c.PostForm("pods")
 	imagesJson := c.PostForm("images")
+	checksJson := c.PostForm("checks")
 	location := c.PostForm("location")
 
 	var pods []string
@@ -1063,6 +1064,14 @@ func performPodsAction(c *gin.Context) {
 			fullImages = append(fullImages, PrivateRepoPrefix+image)
 		}
 	}
+	var checks []bool
+	if err := json.Unmarshal([]byte(checksJson), &checks); err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+	if len(checks) == 0 {
+		checks = []bool{true}
+	}
 
 	var errs []error
 	switch action {
@@ -1074,22 +1083,22 @@ func performPodsAction(c *gin.Context) {
 		}
 	case "start":
 		for _, podname := range pods {
-			if err := startPod(namespace, podname); err != nil {
+			if err := startPod(namespace, podname, checks); err != nil {
 				errs = append(errs, err)
 			}
 		}
 	case "stop":
 		for _, podname := range pods {
-			if err := stopPod(namespace, podname); err != nil {
+			if err := stopPod(namespace, podname, checks); err != nil {
 				errs = append(errs, err)
 			}
 		}
 	case "restart":
 		for _, podname := range pods {
-			if err := stopPod(namespace, podname); err != nil {
+			if err := stopPod(namespace, podname, checks); err != nil {
 				errs = append(errs, err)
 			}
-			if err := startPod(namespace, podname); err != nil {
+			if err := startPod(namespace, podname, checks); err != nil {
 				errs = append(errs, err)
 			}
 		}
@@ -1137,18 +1146,24 @@ func setPodImage(namespace string, podname string, fullImages []string) error {
 	return nil
 }
 
-func stopPod(namespace string, podname string) error {
+func stopPod(namespace string, podname string, checks []bool) error {
 	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
 	if err != nil {
 		return err
 	}
-	if pod.Spec.Containers[0].Image == PauseImage {
-		// Already stopped.
-		return nil
+
+	for i, check := range checks {
+		if pod.Spec.Containers[i].Image == PauseImage {
+			// Already stopped.
+			continue
+		}
+		if check {
+			paused := fmt.Sprintf("paused%d", i)
+			pod.Annotations[paused] = pod.Spec.Containers[i].Image
+			pod.Spec.Containers[i].Image = PauseImage
+		}
 	}
 
-	pod.Annotations["paused"] = pod.Spec.Containers[0].Image
-	pod.Spec.Containers[0].Image = PauseImage
 	_, err = kubeclient.Get().Pods(namespace).Update(pod)
 	if err != nil {
 		return err
@@ -1156,18 +1171,24 @@ func stopPod(namespace string, podname string) error {
 	return nil
 }
 
-func startPod(namespace string, podname string) error {
+func startPod(namespace string, podname string, checks []bool) error {
 	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
 	if err != nil {
 		return err
 	}
-	if pod.Spec.Containers[0].Image != PauseImage {
-		// Already started.
-		return nil
+
+	for i, check := range checks {
+		if pod.Spec.Containers[i].Image != PauseImage {
+			// Already started.
+			continue
+		}
+		if check {
+			paused := fmt.Sprintf("paused%d", i)
+			pod.Spec.Containers[i].Image = pod.Annotations[paused]
+			delete(pod.Annotations, paused)
+		}
 	}
 
-	pod.Spec.Containers[0].Image = pod.Annotations["paused"]
-	delete(pod.Annotations, "paused")
 	_, err = kubeclient.Get().Pods(namespace).Update(pod)
 	if err != nil {
 		return err

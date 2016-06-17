@@ -45,6 +45,20 @@
             {{end}}
         </tr>
         {{end}}
+        {{if eq .action "restart"}}
+        <tr>
+            <th></th>
+            {{range $index, $image := .images}}
+            <th>重启
+            {{if eq $index 0}}
+            <input type="checkbox" class="podcheck" checked>
+            {{else}}
+            <input type="checkbox" class="podcheck">
+            {{end}}
+            </th>
+            {{end}}
+        </tr>
+        {{end}}
     </tbody>
 </table>
 
@@ -92,11 +106,19 @@ function submit() {
             return;
         }
     }
+    var checks = [];
+    var checkboxes = document.getElementsByClassName('podcheck');
+    for(var k=0, p=checkboxes.length; k<p; k++) {
+        var checkbox = checkboxes[k];
+        var checked = checkbox.checked;
+        checks.push(checked);
+    }
     $('#loading').show();
     post('/namespaces/{{.namespace}}/pods', {
         action: action,
         pods: JSON.stringify(pods),
         images: JSON.stringify(images),
+        checks: JSON.stringify(checks),
         location: "{{.location}}",
     });
 }
