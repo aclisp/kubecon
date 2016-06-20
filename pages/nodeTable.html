@@ -71,6 +71,14 @@
             {{end}}
             {{end}}
         </td>
+        <td>
+            <a href="/nodes/{{.Name}}/edit">
+                <span class="glyphicon glyphicon-edit" title="编辑描述"></span>
+            </a>
+            <a href="/nodes/{{.Name}}/edit?delete">
+                <span class="glyphicon glyphicon-trash" title="删除实例"></span>
+            </a>
+        </td>
     </tr>
     {{end}}
     </tbody>

@@ -73,6 +73,7 @@ func main() {
 	a.GET("/namespaces/:ns/replicationcontrollers/:rc/edit", editReplicationController)
 	a.GET("/namespaces/:ns/services/:svc/edit", editService)
 	a.GET("/namespaces/:ns/endpoints/:ep/edit", editEndpoints)
+	a.GET("/nodes/:no/edit", editNode)
 	a.GET("/namespaces/:ns/events", listEventsInNamespace)
 	a.GET("/nodes", listNodes)
 	a.GET("/nodes/:no", describeNode)
@@ -98,6 +99,8 @@ func main() {
 	a.POST("/namespaces/:ns/endpoints/:ep/delete", deleteEndpoints)
 	a.POST("/namespaces/:ns/replicationcontrollers/:rc/update", updateReplicationController)
 	a.POST("/namespaces/:ns/replicationcontrollers/:rc/delete", deleteReplicationController)
+	a.POST("/nodes/:no/update", updateNode)
+	a.POST("/nodes/:no/delete", deleteNode)
 
 	certFile := "kubecon.crt"
 	keyFile := "kubecon.key"
@@ -161,6 +164,37 @@ func editService(c *gin.Context) {
 		"objname":   svcname,
 		"json":      out.String(),
 		"delete":    strconv.FormatBool(delete),
+	})
+}
+
+func editNode(c *gin.Context) {
+	nodename := c.Param("no")
+	_, delete := c.GetQuery("delete")
+
+	node, err := kubeclient.Get().Nodes().Get(nodename)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	b, err := json.Marshal(node)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	var out bytes.Buffer
+	err = json.Indent(&out, b, "", "  ")
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.HTML(http.StatusOK, "nodeEdit", gin.H{
+		"title":   nodename,
+		"objname": nodename,
+		"json":    out.String(),
+		"delete":  strconv.FormatBool(delete),
 	})
 }
 
@@ -1237,6 +1271,8 @@ func updatePod(c *gin.Context) {
 		return
 	}
 
+	r, _ := kubeclient.Get().Pods(namespace).Get(pod.Name)
+	pod.ResourceVersion = r.ResourceVersion
 	_, err = kubeclient.Get().Pods(namespace).Update(&pod)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
@@ -1428,11 +1464,6 @@ func deleteService(c *gin.Context) {
 	namespace := c.Param("ns")
 	svcname := c.Param("svc")
 
-	//svc, err := kubeclient.Get().Services(namespace).Get(svcname)
-	//if err != nil {
-	//	c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
-	//	return
-	//}
 	err := kubeclient.Get().Services(namespace).Delete(svcname)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
@@ -1467,11 +1498,6 @@ func deleteEndpoints(c *gin.Context) {
 	namespace := c.Param("ns")
 	epname := c.Param("ep")
 
-	//ep, err := kubeclient.Get().Endpoints(namespace).Get(epname)
-	//if err != nil {
-	//	c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
-	//	return
-	//}
 	err := kubeclient.Get().Endpoints(namespace).Delete(epname)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
@@ -1515,4 +1541,38 @@ func createService(c *gin.Context) {
 	}
 
 	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/namespaces/%s", namespace))
+}
+
+func updateNode(c *gin.Context) {
+	nodename := c.Param("no")
+	nodejson := c.PostForm("json")
+
+	var node api.Node
+	err := json.Unmarshal([]byte(nodejson), &node)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	r, _ := kubeclient.Get().Nodes().Get(node.Name)
+	node.ResourceVersion = r.ResourceVersion
+	_, err = kubeclient.Get().Nodes().Update(&node)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/nodes/%s/edit", nodename))
+}
+
+func deleteNode(c *gin.Context) {
+	nodename := c.Param("no")
+
+	err := kubeclient.Get().Nodes().Delete(nodename)
+	if err != nil {
+		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
+		return
+	}
+
+	c.Redirect(http.StatusMovedPermanently, fmt.Sprintf("/nodes"))
 }
