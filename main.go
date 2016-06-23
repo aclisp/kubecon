@@ -618,7 +618,19 @@ func listPodsInNamespace(c *gin.Context) {
 		pods = page.FilterPodsByHost(pods, host)
 	}
 
-	sort.Sort(sort.Reverse(page.ByBirth(pods)))
+	sortAlgo, ok := c.GetQuery("sort")
+	if ok && len(sortAlgo) > 0 {
+		switch sortAlgo {
+		case "ByName":
+			sort.Sort(page.ByName(pods))
+		case "ByBirth":
+			sort.Sort(sort.Reverse(page.ByBirth(pods)))
+		default:
+			sort.Sort(sort.Reverse(page.ByBirth(pods)))
+		}
+	} else {
+		sort.Sort(sort.Reverse(page.ByBirth(pods)))
+	}
 
 	c.HTML(http.StatusOK, "podList", gin.H{
 		"title":     "Sigma Pods",
@@ -629,6 +641,7 @@ func listPodsInNamespace(c *gin.Context) {
 			"image":         image,
 			"status":        status,
 			"host":          host,
+			"sort":          sortAlgo,
 		},
 		"pods":     pods,
 		"images":   images,

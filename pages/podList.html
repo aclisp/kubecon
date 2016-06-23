@@ -30,11 +30,11 @@
     <thead>
         <tr>
             <th></th>
-            <th>实例名</th>
+            <th>实例名 <button type="button" id="sortByName" class="btn btn-link btn-xs"><span class="glyphicon glyphicon-sort"></span></button></th>
             <th>镜像</th>
             <th>状态</th>
             <th>规格</th>
-            <th>存活</th>
+            <th>存活 <button type="button" id="sortByBirth" class="btn btn-link btn-xs"><span class="glyphicon glyphicon-sort"></span></button></th>
             <th>网络模式</th>
             <th>主机IP</th>
             <th>容器IP</th>
@@ -131,6 +131,29 @@
 
 <script src="/js/page.js"></script>
 <script>
+// Controlling the sorters
+var nameSorter = document.getElementById('sortByName');
+var birthSorter = document.getElementById('sortByBirth');
+nameSorter.onclick = function() {
+    var queries = {
+        labelSelector: "{{.queries.labelSelector}}",
+        image: "{{.queries.image}}",
+        status: "{{.queries.status}}",
+        host: "{{.queries.host}}",
+        sort: "ByName",
+    };
+    location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
+};
+birthSorter.onclick = function() {
+    var queries = {
+        labelSelector: "{{.queries.labelSelector}}",
+        image: "{{.queries.image}}",
+        status: "{{.queries.status}}",
+        host: "{{.queries.host}}",
+        sort: "ByBirth",
+    };
+    location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
+};
 // Controlling the filters
 var imageFilter = document.getElementById('imageFilter');
 var statusFilter = document.getElementById('statusFilter');
@@ -141,6 +164,7 @@ imageFilter.onchange = function() {
         image: this.options[this.selectedIndex].value,
         status: "{{.queries.status}}",
         host: "{{.queries.host}}",
+        sort: "{{.queries.sort}}",
     };
     location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
 };
@@ -150,6 +174,7 @@ statusFilter.onchange = function() {
         image: "{{.queries.image}}",
         status: this.options[this.selectedIndex].value,
         host: "{{.queries.host}}",
+        sort: "{{.queries.sort}}",
     };
     location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
 };
@@ -159,6 +184,7 @@ hostFilter.onchange = function() {
         image: "{{.queries.image}}",
         status: "{{.queries.status}}",
         host: this.options[this.selectedIndex].value,
+        sort: "{{.queries.sort}}",
     };
     location.href = "/namespaces/{{.namespace}}/pods?" + serialize(queries);
 };

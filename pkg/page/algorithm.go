@@ -11,12 +11,18 @@ func (a ByBirth) Len() int           { return len(a) }
 func (a ByBirth) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func (a ByBirth) Less(i, j int) bool { return a[i].ContainerBirth.Before(a[j].ContainerBirth) }
 
-// ByName implements sort.Interface for []PodImage based on the Image field.
-type ByName []PodImage
+type ByName []Pod
 
 func (a ByName) Len() int           { return len(a) }
 func (a ByName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
-func (a ByName) Less(i, j int) bool { return a[i].Image < a[j].Image }
+func (a ByName) Less(i, j int) bool { return a[i].Name < a[j].Name }
+
+// ByImageName implements sort.Interface for []PodImage based on the Image field.
+type ByImageName []PodImage
+
+func (a ByImageName) Len() int           { return len(a) }
+func (a ByImageName) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a ByImageName) Less(i, j int) bool { return a[i].Image < a[j].Image }
 
 func GetPodsFilters(pods []Pod) (images []PodImage, statuses []string, hosts []string) {
 	imageSet := make(map[PodImage]bool)
@@ -38,7 +44,7 @@ func GetPodsFilters(pods []Pod) (images []PodImage, statuses []string, hosts []s
 	for k := range hostSet {
 		hosts = append(hosts, k)
 	}
-	sort.Sort(ByName(images))
+	sort.Sort(ByImageName(images))
 	sort.Strings(statuses)
 	sort.Strings(hosts)
 	return
