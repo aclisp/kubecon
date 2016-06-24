@@ -3,6 +3,8 @@ package page
 import (
 	"time"
 
+	"github.com/blang/semver"
+
 	"k8s.io/kubernetes/pkg/api"
 )
 
@@ -129,4 +131,9 @@ type SimplePod struct {
 type SimpleImage struct {
 	Name string
 	Tags []string
+}
+
+type CombinedVersion struct {
+	Prefix  string
+	Version semver.Version
 }

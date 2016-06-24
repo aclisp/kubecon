@@ -18,7 +18,6 @@ import (
 	"github.com/aclisp/kubecon/pkg/kube"
 	"github.com/aclisp/kubecon/pkg/kubeclient"
 	"github.com/aclisp/kubecon/pkg/page"
-	"github.com/blang/semver"
 	"github.com/gin-gonic/gin"
 	"github.com/golang/glog"
 
@@ -1023,29 +1022,29 @@ func showPodsForm(c *gin.Context) {
 		if len(splits) > 1 {
 			tag = splits[1]
 		}
-		var tagList []semver.Version
+		var tagList []page.CombinedVersion
 		switch action {
 		case "upgrade":
 			tagList = getImageTags(name)
-			semver.Sort(tagList)
-			index := search(tagList, tag)
+			page.SortCombinedVersions(tagList)
+			index := page.SearchCombinedVersions(tagList, tag)
 			tagList = tagList[index+1:]
 		case "downgrade":
 			tagList = getImageTags(name)
-			semver.Sort(tagList)
-			index := search(tagList, tag)
+			page.SortCombinedVersions(tagList)
+			index := page.SearchCombinedVersions(tagList, tag)
 			if index == -1 {
 				index = len(tagList)
 			}
 			tagList = tagList[:index]
-			reverse(tagList)
+			page.ReverseCombinedVersions(tagList)
 		default:
 			tagList = nil
 		}
-		tagList = limit(tagList, 50)
+		tagList = page.LimitCombinedVersions(tagList, 50)
 		images = append(images, page.SimpleImage{
 			Name: name,
-			Tags: versionsToStrings(tagList),
+			Tags: page.CombinedVersionsToStrings(tagList),
 		})
 	}
 
@@ -1064,7 +1063,7 @@ type TagList struct {
 	Tags []string `json:"tags,omitempty"`
 }
 
-func getImageTags(name string) (tags []semver.Version) {
+func getImageTags(name string) (tags []page.CombinedVersion) {
 	url := "http://" + PrivateRepoPrefix + "v2/" + name + "/tags/list"
 	res, err := http.Get(url)
 	if err != nil {
@@ -1081,41 +1080,12 @@ func getImageTags(name string) (tags []semver.Version) {
 		return nil
 	}
 	for _, t := range data.Tags {
-		v, err := semver.Parse(t)
+		v, err := page.ParseImageTag(t)
 		if err != nil {
+			glog.Warningf("Can not parse image %q tag %q: %v", name, t, err)
 			continue
 		}
 		tags = append(tags, v)
-	}
-	return
-}
-
-func search(items []semver.Version, one string) int {
-	for i := range items {
-		if items[i].String() == one {
-			return i
-		}
-	}
-	return -1
-}
-
-func reverse(items []semver.Version) {
-	for i, j := 0, len(items)-1; i < j; i, j = i+1, j-1 {
-		items[i], items[j] = items[j], items[i]
-	}
-}
-
-func limit(items []semver.Version, max int) []semver.Version {
-	if len(items) > max {
-		return items[:max]
-	} else {
-		return items
-	}
-}
-
-func versionsToStrings(items []semver.Version) (result []string) {
-	for i := range items {
-		result = append(result, items[i].String())
 	}
 	return
 }
