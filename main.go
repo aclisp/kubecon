@@ -69,6 +69,7 @@ func main() {
 	a.GET("/namespaces/:ns/pods", listPodsInNamespace)
 	a.GET("/namespaces/:ns/pods/:po", describePod)
 	a.GET("/namespaces/:ns/pods/:po/log", readPodLog)
+	a.GET("/namespaces/:ns/pods/:po/containers/:ct/log", readContainerLog)
 	a.GET("/namespaces/:ns/pods/:po/edit", editPod)
 	a.GET("/namespaces/:ns/replicationcontrollers/:rc/edit", editReplicationController)
 	a.GET("/namespaces/:ns/services/:svc/edit", editService)
@@ -287,26 +288,36 @@ func editPod(c *gin.Context) {
 		return
 	}
 
+	var containers []string
+	for i := range pod.Spec.Containers {
+		containers = append(containers, pod.Spec.Containers[i].Name)
+	}
+
 	c.HTML(http.StatusOK, "podEdit", gin.H{
-		"title":     podname,
-		"namespace": namespace,
-		"pod":       podname,
-		"json":      out.String(),
+		"title":      podname,
+		"namespace":  namespace,
+		"pod":        podname,
+		"containers": containers,
+		"json":       out.String(),
 	})
 }
 
-func readPodLog(c *gin.Context) {
-	namespace := c.Param("ns")
-	podname := c.Param("po")
-	_, previous := c.GetQuery("previous")
-
+func readLog(c *gin.Context, namespace string, podname string, containername string, previous bool) {
 	pod, err := kubeclient.Get().Pods(namespace).Get(podname)
 	if err != nil {
 		c.HTML(http.StatusInternalServerError, "error", gin.H{"error": err.Error()})
 		return
 	}
-	container := pod.Spec.Containers[0].Name
 
+	var containers []string
+	for i := range pod.Spec.Containers {
+		containers = append(containers, pod.Spec.Containers[i].Name)
+	}
+
+	container := pod.Spec.Containers[0].Name
+	if len(containername) > 0 {
+		container = containername
+	}
 	limitBytes := int64(256 * 1024)
 	tailLines := int64(500)
 	logOptions := &api.PodLogOptions{
@@ -345,12 +356,30 @@ func readPodLog(c *gin.Context) {
 	}
 
 	c.HTML(http.StatusOK, "podLog", gin.H{
-		"title":     podname,
-		"namespace": namespace,
-		"pod":       podname,
-		"log":       out.String(),
-		"previous":  strconv.FormatBool(logOptions.Previous),
+		"title":      podname,
+		"namespace":  namespace,
+		"pod":        podname,
+		"containers": containers,
+		"log":        out.String(),
+		"previous":   strconv.FormatBool(logOptions.Previous),
 	})
+}
+
+func readContainerLog(c *gin.Context) {
+	namespace := c.Param("ns")
+	podname := c.Param("po")
+	containername := c.Param("ct")
+	_, previous := c.GetQuery("previous")
+
+	readLog(c, namespace, podname, containername, previous)
+}
+
+func readPodLog(c *gin.Context) {
+	namespace := c.Param("ns")
+	podname := c.Param("po")
+	_, previous := c.GetQuery("previous")
+
+	readLog(c, namespace, podname, "", previous)
 }
 
 func describePod(c *gin.Context) {
@@ -376,11 +405,17 @@ func describePod(c *gin.Context) {
 		return
 	}
 
+	var containers []string
+	for i := range pod.Spec.Containers {
+		containers = append(containers, pod.Spec.Containers[i].Name)
+	}
+
 	c.HTML(http.StatusOK, "podDetail", gin.H{
-		"title":     podname,
-		"namespace": namespace,
-		"pod":       podname,
-		"json":      out.String(),
+		"title":      podname,
+		"namespace":  namespace,
+		"pod":        podname,
+		"containers": containers,
+		"json":       out.String(),
 	})
 }
 

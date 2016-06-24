@@ -11,8 +11,28 @@
 
     <div class="btn-group" role="group">
         <a class="btn btn-default active" href="/namespaces/{{.namespace}}/pods/{{.pod}}" role="button">容器描述</a>
-        <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}/log" role="button">当前日志</a>
-        <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}/log?previous" role="button">上次日志</a>
+        <div class="btn-group">
+            <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}/log" role="button">当前日志</a>
+            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                {{range .containers}}
+                <li><a href="/namespaces/{{$.namespace}}/pods/{{$.pod}}/containers/{{.}}/log">{{.}}</a></li>
+                {{end}}
+            </ul>
+        </div>
+        <div class="btn-group">
+            <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}/log?previous" role="button">上次日志</a>
+            <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu">
+                {{range .containers}}
+                <li><a href="/namespaces/{{$.namespace}}/pods/{{$.pod}}/containers/{{.}}/log?previous">{{.}}</a></li>
+                {{end}}
+            </ul>
+        </div>
         <a class="btn btn-default" href="/namespaces/{{.namespace}}/pods/{{.pod}}/edit" role="button">编辑描述</a>
     </div>
 
