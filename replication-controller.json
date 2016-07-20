@@ -15,10 +15,6 @@
           "managed-by": "AUTO"
         },
         "annotations": {
-          "config/slot-1": "put some config here",
-          "config/slot-2": "",
-          "config/start-1": "#!/bin/bash\nexec /myapp",
-          "config/start-2": "#!/bin/bash\nexec TODO"
         }
       },
       "spec": {
@@ -28,7 +24,7 @@
         "containers": [
           {
             "name": "AUTO",
-            "image": "61.160.36.122:8080/default/myapp:2.0.1",
+            "image": "61.160.36.122:8080/default/myapp:1.0.3",
             "ports": [
               {
                 "name": "ssh",
@@ -41,12 +37,12 @@
             ],
             "resources": {
               "requests": {
-                "cpu": "1",
-                "memory": "2Gi"
+                "cpu": "0.1",
+                "memory": "200Mi"
               },
               "limits": {
-                "cpu": "10",
-                "memory": "20Gi"
+                "cpu": "0.1",
+                "memory": "200Mi"
               }
             },
             "volumeMounts": [
@@ -72,23 +68,8 @@
               {
                 "name": "persist",
                 "mountPath": "/persist"
-              },
-              {
-                "name": "slot-1",
-                "mountPath": "/etc/service/slot-1"
               }
             ],
-            "lifecycle": {
-              "postStart": {
-                "exec": {
-                  "command": [
-                    "sh",
-                    "-c",
-                    "cd /etc/service/slot-1 && cp start-1 run && chmod +x run"
-                  ]
-                }
-              }
-            },
             "env": [
               {
                 "name": "SSH_PUBLIC_KEY",
@@ -162,25 +143,6 @@
             "name": "persist",
             "emptyDir": {
               "medium": ""
-            }
-          },
-          {
-            "name": "slot-1",
-            "downwardAPI": {
-              "items": [
-                {
-                  "path": "slot-1",
-                  "fieldRef": {
-                    "fieldPath": "metadata.annotations.config/slot-1"
-                  }
-                },
-                {
-                  "path": "start-1",
-                  "fieldRef": {
-                    "fieldPath": "metadata.annotations.config/start-1"
-                  }
-                }
-              ]
             }
           }
         ]

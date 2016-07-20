@@ -804,6 +804,19 @@ func genOnePod(pod *api.Pod) page.Pod {
 	totalContainers := len(pod.Spec.Containers)
 	readyContainers := 0
 	reason := string(pod.Status.Phase)
+	conditionMap := make(map[api.PodConditionType]*api.PodCondition)
+	PodAllConditions := []api.PodConditionType{api.PodReady}
+	for i := range pod.Status.Conditions {
+		cond := pod.Status.Conditions[i]
+		conditionMap[cond.Type] = &cond
+	}
+	for _, validCondition := range PodAllConditions {
+		if condition, ok := conditionMap[validCondition]; ok {
+			if condition.Status != api.ConditionTrue {
+				reason = "Not"+string(condition.Type)
+			}
+		}
+	}
 	if pod.Status.Reason != "" {
 		reason = pod.Status.Reason
 	}
