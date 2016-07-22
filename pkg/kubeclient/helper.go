@@ -1,7 +1,9 @@
 package kubeclient
 
 import (
+	"encoding/json"
 	"github.com/golang/glog"
+	"io/ioutil"
 
 	"k8s.io/kubernetes/pkg/api"
 	"k8s.io/kubernetes/pkg/fields"
@@ -17,12 +19,9 @@ const (
 )
 
 var (
-	kubeClient *kube_client.Client
-	KubeConfig = &Config{
-		APIServerURL: "https://61.160.36.122",
-		Username:     "test",
-		Password:     "test123",
-	}
+	kubeClient     *kube_client.Client
+	KubeConfig     *Config
+	KubeConfigFile = "kubeconfig.json"
 )
 
 type Config struct {
@@ -31,8 +30,42 @@ type Config struct {
 	Password     string
 }
 
+func loadKubeConfig() {
+	KubeConfig = &Config{
+		APIServerURL: "https://61.160.36.122",
+		Username:     "test",
+		Password:     "test123",
+	}
+	cfg, err := ioutil.ReadFile(KubeConfigFile)
+	if err != nil {
+		glog.Warningf("Can not read %q: %v", KubeConfigFile, err)
+		return
+	}
+	if err := json.Unmarshal(cfg, KubeConfig); err != nil {
+		glog.Warningf("Can not unmarshal content of %q: %v", KubeConfigFile, err)
+		return
+	}
+	glog.Infof("Loaded %q", KubeConfigFile)
+}
+
+func SaveKubeConfig() {
+	data, err := json.MarshalIndent(KubeConfig, "", "  ")
+	if err != nil {
+		glog.Errorf("Can not marshal kubeconfig: %v", err)
+		return
+	}
+	if err := ioutil.WriteFile(KubeConfigFile, data, 0640); err != nil {
+		glog.Errorf("Can not write %q: %v", KubeConfigFile, err)
+		return
+	}
+	glog.Infof("Saved to %q", KubeConfigFile)
+}
+
 func Init() {
 	var err error
+	if KubeConfig == nil {
+		loadKubeConfig()
+	}
 	kubeClient, err = getKubeClient()
 	if err != nil {
 		glog.Fatalf("Can not connect to kubernetes: %v", err)

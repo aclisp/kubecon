@@ -42,6 +42,7 @@ var (
 func main() {
 	defer glog.Flush()
 
+	flag.StringVar(&kubeclient.KubeConfigFile, "kubeconfig", "kubeconfig.json", "Specify the target API server")
 	flag.Set("logtostderr", "true")
 	flag.Parse()
 
@@ -130,6 +131,7 @@ func updateConfig(c *gin.Context) {
 	kubeclient.KubeConfig.APIServerURL = c.PostForm("inputAPIServerURL")
 	kubeclient.KubeConfig.Username = c.PostForm("inputUsername")
 	kubeclient.KubeConfig.Password = c.PostForm("inputPassword")
+	kubeclient.SaveKubeConfig()
 	kubeclient.Init()
 	c.Redirect(http.StatusMovedPermanently, "/")
 }
@@ -813,7 +815,7 @@ func genOnePod(pod *api.Pod) page.Pod {
 	for _, validCondition := range PodAllConditions {
 		if condition, ok := conditionMap[validCondition]; ok {
 			if condition.Status != api.ConditionTrue {
-				reason = "Not"+string(condition.Type)
+				reason = "Not" + string(condition.Type)
 			}
 		}
 	}
